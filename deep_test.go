@@ -1487,8 +1487,8 @@ func TestSliceOrderString(t *testing.T) {
 	// These are equal if we ignore order
 	a := []string{"foo", "bar"}
 	b := []string{"bar", "foo"}
-	d := deep.NewDiffer()
-	diff := d.Equal(a, b, deep.FLAG_IGNORE_SLICE_ORDER)
+	d := deep.NewDiffer(deep.IgnoreSliceOrder(true))
+	diff := d.Equal(a, b)
 	if len(diff) != 0 {
 		t.Fatalf("expected 0 diff, got %d: %s", len(diff), diff)
 	}
@@ -1496,7 +1496,7 @@ func TestSliceOrderString(t *testing.T) {
 	// Equal with dupes
 	a = []string{"foo", "foo", "bar"}
 	b = []string{"bar", "foo", "foo"}
-	diff = d.Equal(a, b, deep.FLAG_IGNORE_SLICE_ORDER)
+	diff = d.Equal(a, b)
 	if len(diff) != 0 {
 		t.Fatalf("expected 0 diff, got %d: %s", len(diff), diff)
 	}
@@ -1504,7 +1504,7 @@ func TestSliceOrderString(t *testing.T) {
 	// NOT equal with dupes
 	a = []string{"foo", "foo", "bar"}
 	b = []string{"bar", "bar", "foo"}
-	diff = d.Equal(a, b, deep.FLAG_IGNORE_SLICE_ORDER)
+	diff = d.Equal(a, b)
 	if len(diff) != 2 {
 		t.Fatalf("expected 2 diff, got %d: %s", len(diff), diff)
 	}
@@ -1520,7 +1520,7 @@ func TestSliceOrderString(t *testing.T) {
 	// NOT equal with one missing
 	a = []string{"foo", "bar"}
 	b = []string{"bar", "foo", "gone"}
-	diff = d.Equal(a, b, deep.FLAG_IGNORE_SLICE_ORDER)
+	diff = d.Equal(a, b)
 	if len(diff) != 1 {
 		t.Fatalf("expected 2 diff, got %d: %s", len(diff), diff)
 	}
@@ -1531,7 +1531,7 @@ func TestSliceOrderString(t *testing.T) {
 	// NOT equal at all
 	a = []string{"foo", "bar"}
 	b = []string{"x"}
-	diff = d.Equal(a, b, deep.FLAG_IGNORE_SLICE_ORDER)
+	diff = d.Equal(a, b)
 	if len(diff) != 3 {
 		t.Fatalf("expected 2 diff, got %d: %s", len(diff), diff)
 	}
@@ -1561,7 +1561,8 @@ func TestSliceOrderStruct(t *testing.T) {
 		{i: 2},
 		{i: 1},
 	}
-	diff := deep.NewDiffer().Equal(a, b, deep.FLAG_IGNORE_SLICE_ORDER)
+	d := deep.NewDiffer(deep.IgnoreSliceOrder(true))
+	diff := d.Equal(a, b)
 	if len(diff) != 0 {
 		t.Fatalf("expected 0 diff, got %d: %s", len(diff), diff)
 	}

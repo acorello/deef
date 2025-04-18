@@ -11,116 +11,111 @@ import (
 	"strings"
 )
 
-type DeepOpt func(Differ) Differ
+type Opt func(Differ) Differ
 
 // FloatPrecision is the number of decimal places to round float values
 // to when comparing.
-func FloatPrecision(p uint) DeepOpt {
+func FloatPrecision(p uint) Opt {
 	return func(d Differ) Differ {
 		d.floatPrecision = p
 		return d
 	}
 }
 
-const floatPrecision = 10
-
 // MaxDiff specifies the maximum number of differences to return.
-func MaxDiff(m int) DeepOpt {
+func MaxDiff(m int) Opt {
 	return func(d Differ) Differ {
 		d.maxDiff = uint(m)
 		return d
 	}
 }
 
-const maxDiff = 10
-
 // MaxDepth specifies the maximum levels of a struct to recurse into,
 // if greater than zero. If zero, there is no limit.
-func MaxDepth(m uint) DeepOpt {
+func MaxDepth(m uint) Opt {
 	return func(d Differ) Differ {
 		d.maxDepth = m
 		return d
 	}
 }
 
-const maxDepth = 0
-
 // LogErrors causes errors to be logged to STDERR when true.
-func LogErrors(b bool) DeepOpt {
+func LogErrors(b bool) Opt {
 	return func(differ Differ) Differ {
 		differ.logErrors = b
 		return differ
 	}
 }
 
-const logErrors = false
-
 // CompareUnexportedFields causes unexported struct fields, like s in
 // T{s int}, to be compared when true. This does not work for comparing
 // error or Time types on unexported fields because methods on unexported
 // fields cannot be called.
-func CompareUnexportedFields(b bool) DeepOpt {
+func CompareUnexportedFields(b bool) Opt {
 	return func(differ Differ) Differ {
 		differ.compareUnexportedFields = b
 		return differ
 	}
 }
 
-const compareUnexportedFields = false
-
 // CompareFunctions compares functions the same as reflect.DeepEqual:
 // only two nil functions are equal. Every other combination is not equal.
 // This is disabled by default because previous versions of this package
 // ignored functions. Enabling it can possibly report new diffs.
-func CompareFunctions(b bool) DeepOpt {
+func CompareFunctions(b bool) Opt {
 	return func(differ Differ) Differ {
 		differ.compareFunctions = b
 		return differ
 	}
 }
 
-const compareFunctions = false
-
 // NilSlicesAreEmpty causes a nil slice to be equal to an empty slice.
-func NilSlicesAreEmpty(b bool) DeepOpt {
+func NilSlicesAreEmpty(b bool) Opt {
 	return func(differ Differ) Differ {
 		differ.nilSlicesAreEmpty = b
 		return differ
 	}
 }
 
-const nilSlicesAreEmpty = false
-
 // NilMapsAreEmpty causes a nil map to be equal to an empty map.
-func NilMapsAreEmpty(b bool) DeepOpt {
+func NilMapsAreEmpty(b bool) Opt {
 	return func(differ Differ) Differ {
 		differ.nilMapsAreEmpty = b
 		return differ
 	}
 }
 
-const nilMapsAreEmpty = false
-
 // NilPointersAreZero causes a nil pointer to be equal to a zero value.
-func NilPointersAreZero(b bool) DeepOpt {
+func NilPointersAreZero(b bool) Opt {
 	return func(differ Differ) Differ {
 		differ.nilPointersAreZero = b
 		return differ
 	}
 }
 
-const nilPointersAreZero = false
+// IgnoreSliceOrder causes Equal to ignore slice order so that
+// []int{1, 2} and []int{2, 1} are equal. Only slices of primitive scalars
+// like numbers and strings are supported. Slices of complex types,
+// like []T where T is a struct, are undefined because Equal does not
+// recurse into the slice value when this flag is enabled.
+func IgnoreSliceOrder(b bool) Opt {
+	return func(differ Differ) Differ {
+		differ.ignoreSliceOrder = b
+		return differ
+	}
+}
 
 type Differ struct {
-	floatPrecision          uint
-	maxDiff                 uint
-	maxDepth                uint
-	logErrors               bool
-	compareUnexportedFields bool
 	compareFunctions        bool
-	nilSlicesAreEmpty       bool
+	compareUnexportedFields bool
+	floatPrecision          uint
+	ignoreSliceOrder        bool
+	logErrors               bool
+	maxDepth                uint
+	maxDiff                 uint
 	nilMapsAreEmpty         bool
 	nilPointersAreZero      bool
+	nilSlicesAreEmpty       bool
 }
 
 var (
@@ -134,40 +129,20 @@ var (
 	ErrNotHandled = errors.New("cannot compare the reflect.Kind")
 )
 
-const (
-	// FLAG_NONE is a placeholder for default Equal behavior. You don't have to
-	// pass it to Equal; if you do, it does nothing.
-	FLAG_NONE byte = iota
-
-	// FLAG_IGNORE_SLICE_ORDER causes Equal to ignore slice order so that
-	// []int{1, 2} and []int{2, 1} are equal. Only slices of primitive scalars
-	// like numbers and strings are supported. Slices of complex types,
-	// like []T where T is a struct, are undefined because Equal does not
-	// recurse into the slice value when this flag is enabled.
-	FLAG_IGNORE_SLICE_ORDER
-)
-
 type cmp struct {
 	Differ
 	diff        []string
 	buff        []string
 	floatFormat string
-	flag        map[byte]bool
 }
 
 var errorType = reflect.TypeOf((*error)(nil)).Elem()
 
-func NewDiffer(opts ...DeepOpt) (d Differ) {
+func NewDiffer(opts ...Opt) (d Differ) {
 	d = Differ{
-		floatPrecision:          floatPrecision,
-		maxDiff:                 maxDiff,
-		maxDepth:                maxDepth,
-		logErrors:               logErrors,
-		compareUnexportedFields: compareUnexportedFields,
-		compareFunctions:        compareFunctions,
-		nilSlicesAreEmpty:       nilSlicesAreEmpty,
-		nilMapsAreEmpty:         nilMapsAreEmpty,
-		nilPointersAreZero:      nilPointersAreZero,
+		// options where zero-value equals default value are omitted
+		floatPrecision: 10,
+		maxDiff:        10,
 	}
 	for opt := range opts {
 		d = opts[opt](d)
@@ -199,7 +174,7 @@ func (d Delta) Equal(other Delta) bool {
 //
 // When comparing a struct, if a field has the tag `deep:"-"` then it will be
 // ignored.
-func (d Differ) Equal(a, b interface{}, flags ...interface{}) Delta {
+func (d Differ) Equal(a, b any) Delta {
 	aVal := reflect.ValueOf(a)
 	bVal := reflect.ValueOf(b)
 	c := &cmp{
@@ -207,10 +182,6 @@ func (d Differ) Equal(a, b interface{}, flags ...interface{}) Delta {
 		diff:        []string{},
 		buff:        []string{},
 		floatFormat: fmt.Sprintf("%%.%df", d.floatPrecision),
-		flag:        map[byte]bool{},
-	}
-	for i := range flags {
-		c.flag[flags[i].(byte)] = true
 	}
 	if a == nil && b == nil {
 		return nil
@@ -230,7 +201,7 @@ func (d Differ) Equal(a, b interface{}, flags ...interface{}) Delta {
 	return nil // no diffs
 }
 
-func (d Differ) With(opts ...DeepOpt) (r Differ) {
+func (d Differ) With(opts ...Opt) (r Differ) {
 	r = d
 	for i := range opts {
 		r = opts[i](r)
@@ -495,7 +466,7 @@ func (c *cmp) equals(a, b reflect.Value, level uint) {
 			return
 		}
 
-		if c.flag[FLAG_IGNORE_SLICE_ORDER] {
+		if c.ignoreSliceOrder {
 			// Compare slices by value and value count; ignore order.
 			// Value equality is impliclity established by the maps:
 			// any value v1 will hash to the same map value if it's equal
