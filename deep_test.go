@@ -199,7 +199,7 @@ func TestDeepRecursion(t *testing.T) {
 	// No diffs because MaxDepth=2 prevents seeing the diff at 3rd level down
 	dMaxDepth2 := deep.NewDiffer(deep.MaxDepth(2))
 	diff := dMaxDepth2.Equal(foo, bar)
-	if diff != nil {
+	if diff.IsEmpty() {
 		t.Errorf("got %d diffs, expected none: %v", len(diff), diff)
 	}
 
