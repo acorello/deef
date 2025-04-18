@@ -9,18 +9,18 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/go-test/deep"
-	v1 "github.com/go-test/deep/test/v1"
-	v2 "github.com/go-test/deep/test/v2"
+	"github.com/acorello/deep"
+	v1 "github.com/acorello/deep/test/v1"
+	v2 "github.com/acorello/deep/test/v2"
 )
 
 func TestString(t *testing.T) {
-	diff := deep.Equal("foo", "foo")
+	diff := deep.NewDiffer().Equal("foo", "foo")
 	if len(diff) > 0 {
 		t.Error("should be equal:", diff)
 	}
 
-	diff = deep.Equal("foo", "bar")
+	diff = deep.NewDiffer().Equal("foo", "bar")
 	if diff == nil {
 		t.Fatal("no diff")
 	}
@@ -33,26 +33,23 @@ func TestString(t *testing.T) {
 }
 
 func TestFloat(t *testing.T) {
-	diff := deep.Equal(1.1, 1.1)
+	diff := deep.NewDiffer().Equal(1.1, 1.1)
 	if len(diff) > 0 {
 		t.Error("should be equal:", diff)
 	}
 
-	diff = deep.Equal(1.1234561, 1.1234562)
+	diff = deep.NewDiffer().Equal(1.1234561, 1.1234562)
 	if diff == nil {
 		t.Error("no diff")
 	}
 
-	defaultFloatPrecision := deep.FloatPrecision
-	deep.FloatPrecision = 6
-	defer func() { deep.FloatPrecision = defaultFloatPrecision }()
-
-	diff = deep.Equal(1.1234561, 1.1234562)
+	differFP6 := deep.NewDiffer(deep.FloatPrecision(6))
+	diff = differFP6.Equal(1.1234561, 1.1234562)
 	if len(diff) > 0 {
 		t.Error("should be equal:", diff)
 	}
 
-	diff = deep.Equal(1.123456, 1.123457)
+	diff = differFP6.Equal(1.123456, 1.123457)
 	if diff == nil {
 		t.Fatal("no diff")
 	}
@@ -66,12 +63,12 @@ func TestFloat(t *testing.T) {
 }
 
 func TestInt(t *testing.T) {
-	diff := deep.Equal(1, 1)
+	diff := deep.NewDiffer().Equal(1, 1)
 	if len(diff) > 0 {
 		t.Error("should be equal:", diff)
 	}
 
-	diff = deep.Equal(1, 2)
+	diff = deep.NewDiffer().Equal(1, 2)
 	if diff == nil {
 		t.Fatal("no diff")
 	}
@@ -84,12 +81,12 @@ func TestInt(t *testing.T) {
 }
 
 func TestUint(t *testing.T) {
-	diff := deep.Equal(uint(2), uint(2))
+	diff := deep.NewDiffer().Equal(uint(2), uint(2))
 	if len(diff) > 0 {
 		t.Error("should be equal:", diff)
 	}
 
-	diff = deep.Equal(uint(2), uint(3))
+	diff = deep.NewDiffer().Equal(uint(2), uint(3))
 	if diff == nil {
 		t.Fatal("no diff")
 	}
@@ -102,17 +99,17 @@ func TestUint(t *testing.T) {
 }
 
 func TestBool(t *testing.T) {
-	diff := deep.Equal(true, true)
+	diff := deep.NewDiffer().Equal(true, true)
 	if len(diff) > 0 {
 		t.Error("should be equal:", diff)
 	}
 
-	diff = deep.Equal(false, false)
+	diff = deep.NewDiffer().Equal(false, false)
 	if len(diff) > 0 {
 		t.Error("should be equal:", diff)
 	}
 
-	diff = deep.Equal(true, false)
+	diff = deep.NewDiffer().Equal(true, false)
 	if diff == nil {
 		t.Fatal("no diff")
 	}
@@ -129,7 +126,7 @@ func TestTypeMismatch(t *testing.T) {
 	type T2 int // but different type
 	var t1 T1 = 1
 	var t2 T2 = 1
-	diff := deep.Equal(t1, t2)
+	diff := deep.NewDiffer().Equal(t1, t2)
 	if diff == nil {
 		t.Fatal("no diff")
 	}
@@ -144,24 +141,22 @@ func TestTypeMismatch(t *testing.T) {
 	// https://github.com/go-test/deep/issues/39
 	err1 := v1.Error{}
 	err2 := v2.Error{}
-	diff = deep.Equal(err1, err2)
+	diff = deep.NewDiffer().Equal(err1, err2)
 	if diff == nil {
 		t.Fatal("no diff")
 	}
 	if len(diff) != 1 {
 		t.Error("too many diff:", diff)
 	}
-	if diff[0] != "github.com/go-test/deep/test/v1.Error != github.com/go-test/deep/test/v2.Error" {
+	if diff[0] != "github.com/acorello/deep/test/v1.Error != github.com/acorello/deep/test/v2.Error" {
 		t.Error("wrong diff:", diff[0])
 	}
 }
 
 func TestKindMismatch(t *testing.T) {
-	deep.LogErrors = true
-
 	var x int = 100
 	var y float64 = 100
-	diff := deep.Equal(x, y)
+	diff := deep.NewDiffer(deep.LogErrors(true)).Equal(x, y)
 	if diff == nil {
 		t.Fatal("no diff")
 	}
@@ -171,14 +166,9 @@ func TestKindMismatch(t *testing.T) {
 	if diff[0] != "int != float64" {
 		t.Error("wrong diff:", diff[0])
 	}
-
-	deep.LogErrors = false
 }
 
 func TestDeepRecursion(t *testing.T) {
-	deep.MaxDepth = 2
-	defer func() { deep.MaxDepth = 10 }()
-
 	type s3 struct {
 		S int
 	}
@@ -207,16 +197,14 @@ func TestDeepRecursion(t *testing.T) {
 		},
 	}
 	// No diffs because MaxDepth=2 prevents seeing the diff at 3rd level down
-	diff := deep.Equal(foo, bar)
+	dMaxDepth2 := deep.NewDiffer(deep.MaxDepth(2))
+	diff := dMaxDepth2.Equal(foo, bar)
 	if diff != nil {
 		t.Errorf("got %d diffs, expected none: %v", len(diff), diff)
 	}
 
-	defaultMaxDepth := deep.MaxDepth
-	deep.MaxDepth = 4
-	defer func() { deep.MaxDepth = defaultMaxDepth }()
-
-	diff = deep.Equal(foo, bar)
+	dMaxDepth4 := deep.NewDiffer(deep.MaxDepth(4))
+	diff = dMaxDepth4.Equal(foo, bar)
 	if diff == nil {
 		t.Fatal("no diff")
 	}
@@ -232,21 +220,17 @@ func TestMaxDiff(t *testing.T) {
 	a := []int{1, 2, 3, 4, 5, 6, 7}
 	b := []int{0, 0, 0, 0, 0, 0, 0}
 
-	defaultMaxDiff := deep.MaxDiff
-	deep.MaxDiff = 3
-	defer func() { deep.MaxDiff = defaultMaxDiff }()
-
-	diff := deep.Equal(a, b)
+	wantDiffLen := 3
+	dMaxDiff3 := deep.NewDiffer(deep.MaxDiff(wantDiffLen))
+	diff := dMaxDiff3.Equal(a, b)
 	if diff == nil {
 		t.Fatal("no diffs")
 	}
-	if len(diff) != deep.MaxDiff {
-		t.Errorf("got %d diffs, expected %d", len(diff), deep.MaxDiff)
+
+	if gotDiffLen := len(diff); gotDiffLen != wantDiffLen {
+		t.Errorf("got %d diffs, expected %d", gotDiffLen, wantDiffLen)
 	}
 
-	defaultCompareUnexportedFields := deep.CompareUnexportedFields
-	deep.CompareUnexportedFields = true
-	defer func() { deep.CompareUnexportedFields = defaultCompareUnexportedFields }()
 	type fiveFields struct {
 		a int // unexported fields require ^
 		b int
@@ -256,12 +240,13 @@ func TestMaxDiff(t *testing.T) {
 	}
 	t1 := fiveFields{1, 2, 3, 4, 5}
 	t2 := fiveFields{0, 0, 0, 0, 0}
-	diff = deep.Equal(t1, t2)
+	dMaxDiff3UnexportedTrue := dMaxDiff3.With(deep.CompareUnexportedFields(true))
+	diff = dMaxDiff3UnexportedTrue.Equal(t1, t2)
 	if diff == nil {
 		t.Fatal("no diffs")
 	}
-	if len(diff) != deep.MaxDiff {
-		t.Errorf("got %d diffs, expected %d", len(diff), deep.MaxDiff)
+	if len(diff) != wantDiffLen {
+		t.Errorf("got %d diffs, expected %d", len(diff), wantDiffLen)
 	}
 
 	// Same keys, too many diffs
@@ -279,13 +264,13 @@ func TestMaxDiff(t *testing.T) {
 		4: 0,
 		5: 0,
 	}
-	diff = deep.Equal(m1, m2)
+	diff = dMaxDiff3UnexportedTrue.Equal(m1, m2)
 	if diff == nil {
 		t.Fatal("no diffs")
 	}
-	if len(diff) != deep.MaxDiff {
+	if len(diff) != wantDiffLen {
 		t.Log(diff)
-		t.Errorf("got %d diffs, expected %d", len(diff), deep.MaxDiff)
+		t.Errorf("got %d diffs, expected %d", len(diff), wantDiffLen)
 	}
 
 	// Too many missing keys
@@ -302,13 +287,13 @@ func TestMaxDiff(t *testing.T) {
 		6: 0,
 		7: 0,
 	}
-	diff = deep.Equal(m1, m2)
+	diff = dMaxDiff3UnexportedTrue.Equal(m1, m2)
 	if diff == nil {
 		t.Fatal("no diffs")
 	}
-	if len(diff) != deep.MaxDiff {
+	if len(diff) != wantDiffLen {
 		t.Log(diff)
-		t.Errorf("got %d diffs, expected %d", len(diff), deep.MaxDiff)
+		t.Errorf("got %d diffs, expected %d", len(diff), wantDiffLen)
 	}
 }
 
@@ -321,7 +306,7 @@ func TestNotHandled(t *testing.T) {
 	// no longer supports Go 1.17.
 	//a := reflect.ValueOf(v).UnsafePointer()
 	//b := reflect.ValueOf(v).UnsafePointer()
-	diff := deep.Equal(a, b)
+	diff := deep.NewDiffer().Equal(a, b)
 	if len(diff) > 0 {
 		t.Error("got diffs:", diff)
 	}
@@ -339,13 +324,13 @@ func TestStruct(t *testing.T) {
 		Number: 2,
 	}
 	sb := sa
-	diff := deep.Equal(sa, sb)
+	diff := deep.NewDiffer().Equal(sa, sb)
 	if len(diff) > 0 {
 		t.Error("should be equal:", diff)
 	}
 
 	sb.Name = "bar"
-	diff = deep.Equal(sa, sb)
+	diff = deep.NewDiffer().Equal(sa, sb)
 	if diff == nil {
 		t.Fatal("no diff")
 	}
@@ -357,7 +342,7 @@ func TestStruct(t *testing.T) {
 	}
 
 	sb.Number = 22
-	diff = deep.Equal(sa, sb)
+	diff = deep.NewDiffer().Equal(sa, sb)
 	if diff == nil {
 		t.Fatal("no diff")
 	}
@@ -372,7 +357,7 @@ func TestStruct(t *testing.T) {
 	}
 
 	sb.id = 11
-	diff = deep.Equal(sa, sb)
+	diff = deep.NewDiffer().Equal(sa, sb)
 	if diff == nil {
 		t.Fatal("no diff")
 	}
@@ -492,12 +477,10 @@ func TestStructWithTags(t *testing.T) {
 		},
 	}
 
-	orig := deep.CompareUnexportedFields
-	deep.CompareUnexportedFields = true
-	diff := deep.Equal(sa, sb)
-	deep.CompareUnexportedFields = orig
+	d := deep.NewDiffer(deep.CompareUnexportedFields(true))
+	gotDelta := d.Equal(sa, sb)
 
-	want := []string{
+	want := deep.Delta([]string{
 		"s1.modified: 1 != 10",
 		"s1.ExportedModified: 5 != 50",
 		"modified: 1 != 10",
@@ -506,9 +489,9 @@ func TestStructWithTags(t *testing.T) {
 		"recurseInline.ExportedModified: 5 != 50",
 		"recursePtr.modified: 1 != 10",
 		"recursePtr.ExportedModified: 5 != 50",
-	}
-	if !reflect.DeepEqual(want, diff) {
-		t.Errorf("got %v, want %v", diff, want)
+	})
+	if !gotDelta.Equal(want) {
+		t.Errorf("got %v, want %v", gotDelta, want)
 	}
 }
 
@@ -525,13 +508,13 @@ func TestNestedStruct(t *testing.T) {
 		Alias: s2{Nickname: "Bob"},
 	}
 	sb := sa
-	diff := deep.Equal(sa, sb)
+	diff := deep.NewDiffer().Equal(sa, sb)
 	if len(diff) > 0 {
 		t.Error("should be equal:", diff)
 	}
 
 	sb.Alias.Nickname = "Bobby"
-	diff = deep.Equal(sa, sb)
+	diff = deep.NewDiffer().Equal(sa, sb)
 	if diff == nil {
 		t.Fatal("no diff")
 	}
@@ -552,18 +535,18 @@ func TestMap(t *testing.T) {
 		"foo": 1,
 		"bar": 2,
 	}
-	diff := deep.Equal(ma, mb)
+	diff := deep.NewDiffer().Equal(ma, mb)
 	if len(diff) > 0 {
 		t.Error("should be equal:", diff)
 	}
 
-	diff = deep.Equal(ma, ma)
+	diff = deep.NewDiffer().Equal(ma, ma)
 	if len(diff) > 0 {
 		t.Error("should be equal:", diff)
 	}
 
 	mb["foo"] = 111
-	diff = deep.Equal(ma, mb)
+	diff = deep.NewDiffer().Equal(ma, mb)
 	if diff == nil {
 		t.Fatal("no diff")
 	}
@@ -575,7 +558,7 @@ func TestMap(t *testing.T) {
 	}
 
 	delete(mb, "foo")
-	diff = deep.Equal(ma, mb)
+	diff = deep.NewDiffer().Equal(ma, mb)
 	if diff == nil {
 		t.Fatal("no diff")
 	}
@@ -586,7 +569,7 @@ func TestMap(t *testing.T) {
 		t.Error("wrong diff:", diff[0])
 	}
 
-	diff = deep.Equal(mb, ma)
+	diff = deep.NewDiffer().Equal(mb, ma)
 	if diff == nil {
 		t.Fatal("no diff")
 	}
@@ -598,7 +581,7 @@ func TestMap(t *testing.T) {
 	}
 
 	var mc map[string]int
-	diff = deep.Equal(ma, mc)
+	diff = deep.NewDiffer().Equal(ma, mc)
 	if diff == nil {
 		t.Fatal("no diff")
 	}
@@ -610,7 +593,7 @@ func TestMap(t *testing.T) {
 		t.Error("wrong diff:", diff[0])
 	}
 
-	diff = deep.Equal(mc, ma)
+	diff = deep.NewDiffer().Equal(mc, ma)
 	if diff == nil {
 		t.Fatal("no diff")
 	}
@@ -626,18 +609,19 @@ func TestArray(t *testing.T) {
 	a := [3]int{1, 2, 3}
 	b := [3]int{1, 2, 3}
 
-	diff := deep.Equal(a, b)
+	differ := deep.NewDiffer()
+	diff := differ.Equal(a, b)
 	if len(diff) > 0 {
 		t.Error("should be equal:", diff)
 	}
 
-	diff = deep.Equal(a, a)
+	diff = differ.Equal(a, a)
 	if len(diff) > 0 {
 		t.Error("should be equal:", diff)
 	}
 
 	b[2] = 333
-	diff = deep.Equal(a, b)
+	diff = differ.Equal(a, b)
 	if diff == nil {
 		t.Fatal("no diff")
 	}
@@ -649,7 +633,7 @@ func TestArray(t *testing.T) {
 	}
 
 	c := [3]int{1, 2, 2}
-	diff = deep.Equal(a, c)
+	diff = differ.Equal(a, c)
 	if diff == nil {
 		t.Fatal("no diff")
 	}
@@ -661,7 +645,7 @@ func TestArray(t *testing.T) {
 	}
 
 	var d [2]int
-	diff = deep.Equal(a, d)
+	diff = differ.Equal(a, d)
 	if diff == nil {
 		t.Fatal("no diff")
 	}
@@ -674,14 +658,15 @@ func TestArray(t *testing.T) {
 
 	e := [12]int{}
 	f := [12]int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
-	diff = deep.Equal(e, f)
+	diff = differ.Equal(e, f)
 	if diff == nil {
 		t.Fatal("no diff")
 	}
-	if len(diff) != deep.MaxDiff {
+	const DefaultMaxDiff = 10
+	if len(diff) != DefaultMaxDiff {
 		t.Error("not enough diffs:", diff)
 	}
-	for i := 0; i < deep.MaxDiff; i++ {
+	for i := 0; i < DefaultMaxDiff; i++ {
 		if diff[i] != fmt.Sprintf("array[%d]: 0 != %d", i+1, i+1) {
 			t.Error("wrong diff:", diff[i])
 		}
@@ -692,18 +677,18 @@ func TestSlice(t *testing.T) {
 	a := []int{1, 2, 3}
 	b := []int{1, 2, 3}
 
-	diff := deep.Equal(a, b)
+	diff := deep.NewDiffer().Equal(a, b)
 	if len(diff) > 0 {
 		t.Error("should be equal:", diff)
 	}
 
-	diff = deep.Equal(a, a)
+	diff = deep.NewDiffer().Equal(a, a)
 	if len(diff) > 0 {
 		t.Error("should be equal:", diff)
 	}
 
 	b[2] = 333
-	diff = deep.Equal(a, b)
+	diff = deep.NewDiffer().Equal(a, b)
 	if diff == nil {
 		t.Fatal("no diff")
 	}
@@ -715,7 +700,7 @@ func TestSlice(t *testing.T) {
 	}
 
 	b = b[0:2]
-	diff = deep.Equal(a, b)
+	diff = deep.NewDiffer().Equal(a, b)
 	if diff == nil {
 		t.Fatal("no diff")
 	}
@@ -726,7 +711,7 @@ func TestSlice(t *testing.T) {
 		t.Error("wrong diff:", diff[0])
 	}
 
-	diff = deep.Equal(b, a)
+	diff = deep.NewDiffer().Equal(b, a)
 	if diff == nil {
 		t.Fatal("no diff")
 	}
@@ -738,7 +723,7 @@ func TestSlice(t *testing.T) {
 	}
 
 	var c []int
-	diff = deep.Equal(a, c)
+	diff = deep.NewDiffer().Equal(a, c)
 	if diff == nil {
 		t.Fatal("no diff")
 	}
@@ -749,7 +734,7 @@ func TestSlice(t *testing.T) {
 		t.Error("wrong diff:", diff[0])
 	}
 
-	diff = deep.Equal(c, a)
+	diff = deep.NewDiffer().Equal(c, a)
 	if diff == nil {
 		t.Fatal("no diff")
 	}
@@ -766,18 +751,18 @@ func TestSiblingSlices(t *testing.T) {
 	a := father[0:3]
 	b := father[0:3]
 
-	diff := deep.Equal(a, b)
+	diff := deep.NewDiffer().Equal(a, b)
 	if len(diff) > 0 {
 		t.Error("should be equal:", diff)
 	}
-	diff = deep.Equal(b, a)
+	diff = deep.NewDiffer().Equal(b, a)
 	if len(diff) > 0 {
 		t.Error("should be equal:", diff)
 	}
 
 	a = father[0:3]
 	b = father[0:2]
-	diff = deep.Equal(a, b)
+	diff = deep.NewDiffer().Equal(a, b)
 	if diff == nil {
 		t.Fatal("no diff")
 	}
@@ -791,7 +776,7 @@ func TestSiblingSlices(t *testing.T) {
 	a = father[0:2]
 	b = father[0:3]
 
-	diff = deep.Equal(a, b)
+	diff = deep.NewDiffer().Equal(a, b)
 	if diff == nil {
 		t.Fatal("no diff")
 	}
@@ -805,7 +790,7 @@ func TestSiblingSlices(t *testing.T) {
 	a = father[0:2]
 	b = father[2:4]
 
-	diff = deep.Equal(a, b)
+	diff = deep.NewDiffer().Equal(a, b)
 	if diff == nil {
 		t.Fatal("no diff")
 	}
@@ -822,11 +807,11 @@ func TestSiblingSlices(t *testing.T) {
 	a = father[0:0]
 	b = father[1:1]
 
-	diff = deep.Equal(a, b)
+	diff = deep.NewDiffer().Equal(a, b)
 	if len(diff) > 0 {
 		t.Error("should be equal:", diff)
 	}
-	diff = deep.Equal(b, a)
+	diff = deep.NewDiffer().Equal(b, a)
 	if len(diff) > 0 {
 		t.Error("should be equal:", diff)
 	}
@@ -838,7 +823,7 @@ func TestEmptySlice(t *testing.T) {
 	var c []int
 
 	// Non-empty is not equal to empty.
-	diff := deep.Equal(a, b)
+	diff := deep.NewDiffer().Equal(a, b)
 	if diff == nil {
 		t.Fatal("no diff")
 	}
@@ -850,7 +835,7 @@ func TestEmptySlice(t *testing.T) {
 	}
 
 	// Empty is not equal to non-empty.
-	diff = deep.Equal(b, a)
+	diff = deep.NewDiffer().Equal(b, a)
 	if diff == nil {
 		t.Fatal("no diff")
 	}
@@ -862,7 +847,7 @@ func TestEmptySlice(t *testing.T) {
 	}
 
 	// Empty is not equal to nil.
-	diff = deep.Equal(b, c)
+	diff = deep.NewDiffer().Equal(b, c)
 	if diff == nil {
 		t.Fatal("no diff")
 	}
@@ -874,7 +859,7 @@ func TestEmptySlice(t *testing.T) {
 	}
 
 	// Nil is not equal to empty.
-	diff = deep.Equal(c, b)
+	diff = deep.NewDiffer().Equal(c, b)
 	if diff == nil {
 		t.Fatal("no diff")
 	}
@@ -887,28 +872,26 @@ func TestEmptySlice(t *testing.T) {
 }
 
 func TestNilSlicesAreEmpty(t *testing.T) {
-	defaultNilSlicesAreEmpty := deep.NilSlicesAreEmpty
-	deep.NilSlicesAreEmpty = true
-	defer func() { deep.NilSlicesAreEmpty = defaultNilSlicesAreEmpty }()
 
 	a := []int{1}
 	b := []int{}
 	var c []int
 
 	// Empty is equal to nil.
-	diff := deep.Equal(b, c)
+	d := deep.NewDiffer(deep.NilSlicesAreEmpty(true))
+	diff := d.Equal(b, c)
 	if len(diff) > 0 {
 		t.Error("should be equal:", diff)
 	}
 
 	// Nil is equal to empty.
-	diff = deep.Equal(c, b)
+	diff = d.Equal(c, b)
 	if len(diff) > 0 {
 		t.Error("should be equal:", diff)
 	}
 
 	// Non-empty is not equal to nil.
-	diff = deep.Equal(a, c)
+	diff = d.Equal(a, c)
 	if diff == nil {
 		t.Fatal("no diff")
 	}
@@ -920,7 +903,7 @@ func TestNilSlicesAreEmpty(t *testing.T) {
 	}
 
 	// Nil is not equal to non-empty.
-	diff = deep.Equal(c, a)
+	diff = d.Equal(c, a)
 	if diff == nil {
 		t.Fatal("no diff")
 	}
@@ -932,7 +915,7 @@ func TestNilSlicesAreEmpty(t *testing.T) {
 	}
 
 	// Non-empty is not equal to empty.
-	diff = deep.Equal(a, b)
+	diff = d.Equal(a, b)
 	if diff == nil {
 		t.Fatal("no diff")
 	}
@@ -944,7 +927,7 @@ func TestNilSlicesAreEmpty(t *testing.T) {
 	}
 
 	// Empty is not equal to non-empty.
-	diff = deep.Equal(b, a)
+	diff = d.Equal(b, a)
 	if diff == nil {
 		t.Fatal("no diff")
 	}
@@ -957,28 +940,26 @@ func TestNilSlicesAreEmpty(t *testing.T) {
 }
 
 func TestNilMapsAreEmpty(t *testing.T) {
-	defaultNilMapsAreEmpty := deep.NilMapsAreEmpty
-	deep.NilMapsAreEmpty = true
-	defer func() { deep.NilMapsAreEmpty = defaultNilMapsAreEmpty }()
 
 	a := map[int]int{1: 1}
 	b := map[int]int{}
 	var c map[int]int
 
 	// Empty is equal to nil.
-	diff := deep.Equal(b, c)
+	d := deep.NewDiffer(deep.NilMapsAreEmpty(true))
+	diff := d.Equal(b, c)
 	if len(diff) > 0 {
 		t.Error("should be equal:", diff)
 	}
 
 	// Nil is equal to empty.
-	diff = deep.Equal(c, b)
+	diff = d.Equal(c, b)
 	if len(diff) > 0 {
 		t.Error("should be equal:", diff)
 	}
 
 	// Non-empty is not equal to nil.
-	diff = deep.Equal(a, c)
+	diff = d.Equal(a, c)
 	if diff == nil {
 		t.Fatal("no diff")
 	}
@@ -990,7 +971,7 @@ func TestNilMapsAreEmpty(t *testing.T) {
 	}
 
 	// Nil is not equal to non-empty.
-	diff = deep.Equal(c, a)
+	diff = d.Equal(c, a)
 	if diff == nil {
 		t.Fatal("no diff")
 	}
@@ -1002,7 +983,7 @@ func TestNilMapsAreEmpty(t *testing.T) {
 	}
 
 	// Non-empty is not equal to empty.
-	diff = deep.Equal(a, b)
+	diff = d.Equal(a, b)
 	if diff == nil {
 		t.Fatal("no diff")
 	}
@@ -1014,7 +995,7 @@ func TestNilMapsAreEmpty(t *testing.T) {
 	}
 
 	// Empty is not equal to non-empty.
-	diff = deep.Equal(b, a)
+	diff = d.Equal(b, a)
 	if diff == nil {
 		t.Fatal("no diff")
 	}
@@ -1030,7 +1011,8 @@ func TestNilInterface(t *testing.T) {
 	type T struct{ i int }
 
 	a := &T{i: 1}
-	diff := deep.Equal(nil, a)
+	d := deep.NewDiffer()
+	diff := d.Equal(nil, a)
 	if diff == nil {
 		t.Fatal("no diff")
 	}
@@ -1041,7 +1023,7 @@ func TestNilInterface(t *testing.T) {
 		t.Error("wrong diff:", diff[0])
 	}
 
-	diff = deep.Equal(a, nil)
+	diff = d.Equal(a, nil)
 	if diff == nil {
 		t.Fatal("no diff")
 	}
@@ -1052,7 +1034,7 @@ func TestNilInterface(t *testing.T) {
 		t.Error("wrong diff:", diff[0])
 	}
 
-	diff = deep.Equal(nil, nil)
+	diff = d.Equal(nil, nil)
 	if len(diff) > 0 {
 		t.Error("should be equal:", diff)
 	}
@@ -1062,13 +1044,14 @@ func TestPointer(t *testing.T) {
 	type T struct{ i int }
 
 	a, b := &T{i: 1}, &T{i: 1}
-	diff := deep.Equal(a, b)
+	d := deep.NewDiffer()
+	diff := d.Equal(a, b)
 	if len(diff) > 0 {
 		t.Error("should be equal:", diff)
 	}
 
 	a, b = nil, &T{}
-	diff = deep.Equal(a, b)
+	diff = d.Equal(a, b)
 	if diff == nil {
 		t.Fatal("no diff")
 	}
@@ -1080,7 +1063,7 @@ func TestPointer(t *testing.T) {
 	}
 
 	a, b = &T{}, nil
-	diff = deep.Equal(a, b)
+	diff = d.Equal(a, b)
 	if diff == nil {
 		t.Fatal("no diff")
 	}
@@ -1092,7 +1075,7 @@ func TestPointer(t *testing.T) {
 	}
 
 	a, b = nil, nil
-	diff = deep.Equal(a, b)
+	diff = d.Equal(a, b)
 	if len(diff) > 0 {
 		t.Error("should be equal:", diff)
 	}
@@ -1106,7 +1089,8 @@ func TestTime(t *testing.T) {
 	now := time.Now()
 	got := sTime{T: now}
 	expect := sTime{T: now.Add(1 * time.Second)}
-	diff := deep.Equal(got, expect)
+	d := deep.NewDiffer()
+	diff := d.Equal(got, expect)
 	if len(diff) != 1 {
 		t.Error("expected 1 diff:", diff)
 	}
@@ -1114,7 +1098,7 @@ func TestTime(t *testing.T) {
 	// Directly
 	a := now
 	b := now
-	diff = deep.Equal(a, b)
+	diff = d.Equal(a, b)
 	if len(diff) > 0 {
 		t.Error("should be equal:", diff)
 	}
@@ -1125,14 +1109,14 @@ func TestTime(t *testing.T) {
 	}
 	a15 := Time15{now}
 	b15 := Time15{now}
-	diff = deep.Equal(a15, b15)
+	diff = d.Equal(a15, b15)
 	if len(diff) > 0 {
 		t.Error("should be equal:", diff)
 	}
 
 	later := now.Add(1 * time.Second)
 	b15 = Time15{later}
-	diff = deep.Equal(a15, b15)
+	diff = d.Equal(a15, b15)
 	if len(diff) != 1 {
 		t.Errorf("got %d diffs, expected 1: %s", len(diff), diff)
 	}
@@ -1144,7 +1128,7 @@ func TestTime(t *testing.T) {
 	}
 	a17 := Time17{Time: now, Foo: 1}
 	b17 := Time17{Time: now, Foo: 2}
-	diff = deep.Equal(a17, b17)
+	diff = d.Equal(a17, b17)
 	if len(diff) != 1 {
 		t.Errorf("got %d diffs, expected 1: %s", len(diff), diff)
 	}
@@ -1153,9 +1137,6 @@ func TestTime(t *testing.T) {
 func TestTimeUnexported(t *testing.T) {
 	// https://github.com/go-test/deep/issues/18
 	// Can't call Call() on exported Value func
-	defaultCompareUnexportedFields := deep.CompareUnexportedFields
-	deep.CompareUnexportedFields = true
-	defer func() { deep.CompareUnexportedFields = defaultCompareUnexportedFields }()
 
 	now := time.Now()
 	type hiddenTime struct {
@@ -1163,7 +1144,8 @@ func TestTimeUnexported(t *testing.T) {
 	}
 	htA := &hiddenTime{t: now}
 	htB := &hiddenTime{t: now}
-	diff := deep.Equal(htA, htB)
+	d := deep.NewDiffer(deep.CompareUnexportedFields(true))
+	diff := d.Equal(htA, htB)
 	if len(diff) > 0 {
 		t.Error("should be equal:", diff)
 	}
@@ -1173,7 +1155,7 @@ func TestTimeUnexported(t *testing.T) {
 	// [t.wall: 13740788835924462040 != 13740788836998203864 t.ext: 1447549 != 1001447549]
 	later := now.Add(1 * time.Second)
 	htC := &hiddenTime{t: later}
-	diff = deep.Equal(htA, htC)
+	diff = d.Equal(htA, htC)
 
 	expected := 1
 	if _, ok := reflect.TypeOf(htA.t).FieldByName("ext"); ok {
@@ -1195,7 +1177,7 @@ func TestInterface(t *testing.T) {
 			"bar": "b",
 		},
 	}
-	diff := deep.Equal(a, b)
+	diff := deep.NewDiffer().Equal(a, b)
 	if len(diff) == 0 {
 		t.Fatalf("expected 1 diff, got zero")
 	}
@@ -1217,7 +1199,7 @@ func TestInterface2(t *testing.T) {
 	b := map[string]interface{}{
 		"bar": 1.23,
 	}
-	diff := deep.Equal(a, b)
+	diff := deep.NewDiffer().Equal(a, b)
 	if len(diff) == 0 {
 		t.Fatalf("expected 1 diff, got zero")
 	}
@@ -1234,7 +1216,7 @@ func TestInterface3(t *testing.T) {
 	b := map[string]interface{}{
 		"foo": 1.23,
 	}
-	diff := deep.Equal(a, b)
+	diff := deep.NewDiffer().Equal(a, b)
 	if len(diff) == 0 {
 		t.Fatalf("expected 1 diff, got zero")
 	}
@@ -1248,13 +1230,14 @@ func TestError(t *testing.T) {
 	a := errors.New("it broke")
 	b := errors.New("it broke")
 
-	diff := deep.Equal(a, b)
+	d := deep.NewDiffer()
+	diff := d.Equal(a, b)
 	if len(diff) != 0 {
 		t.Fatalf("expected zero diffs, got %d: %s", len(diff), diff)
 	}
 
 	b = errors.New("it fell apart")
-	diff = deep.Equal(a, b)
+	diff = d.Equal(a, b)
 	if len(diff) != 1 {
 		t.Fatalf("expected 1 diff, got %d: %s", len(diff), diff)
 	}
@@ -1272,7 +1255,7 @@ func TestError(t *testing.T) {
 	t2 := tWithError{
 		Error: b,
 	}
-	diff = deep.Equal(t1, t2)
+	diff = d.Equal(t1, t2)
 	if len(diff) != 1 {
 		t.Fatalf("expected 1 diff, got %d: %s", len(diff), diff)
 	}
@@ -1287,7 +1270,7 @@ func TestError(t *testing.T) {
 	t2 = tWithError{
 		Error: nil,
 	}
-	diff = deep.Equal(t1, t2)
+	diff = d.Equal(t1, t2)
 	if len(diff) != 0 {
 		t.Log(diff)
 		t.Fatalf("expected 0 diff, got %d: %s", len(diff), diff)
@@ -1300,7 +1283,7 @@ func TestError(t *testing.T) {
 	t2 = tWithError{
 		Error: nil,
 	}
-	diff = deep.Equal(t1, t2)
+	diff = d.Equal(t1, t2)
 	if len(diff) != 1 {
 		t.Log(diff)
 		t.Fatalf("expected 1 diff, got %d: %s", len(diff), diff)
@@ -1327,7 +1310,8 @@ func TestErrorWithOtherFields(t *testing.T) {
 		Error: b,
 		Other: "ok",
 	}
-	diff := deep.Equal(t1, t2)
+	d := deep.NewDiffer()
+	diff := d.Equal(t1, t2)
 	if len(diff) != 1 {
 		t.Fatalf("expected 1 diff, got %d: %s", len(diff), diff)
 	}
@@ -1344,7 +1328,7 @@ func TestErrorWithOtherFields(t *testing.T) {
 		Error: nil,
 		Other: "ok",
 	}
-	diff = deep.Equal(t1, t2)
+	diff = d.Equal(t1, t2)
 	if len(diff) != 0 {
 		t.Log(diff)
 		t.Fatalf("expected 0 diff, got %d: %s", len(diff), diff)
@@ -1359,7 +1343,7 @@ func TestErrorWithOtherFields(t *testing.T) {
 		Error: nil,
 		Other: "nope",
 	}
-	diff = deep.Equal(t1, t2)
+	diff = d.Equal(t1, t2)
 	if len(diff) != 1 {
 		t.Fatalf("expected 1 diff, got %d: %s", len(diff), diff)
 	}
@@ -1376,7 +1360,7 @@ func TestErrorWithOtherFields(t *testing.T) {
 		Error: a,
 		Other: "nope",
 	}
-	diff = deep.Equal(t1, t2)
+	diff = d.Equal(t1, t2)
 	if len(diff) != 1 {
 		t.Fatalf("expected 1 diff, got %d: %s", len(diff), diff)
 	}
@@ -1399,13 +1383,14 @@ func TestErrorPrimitiveKind(t *testing.T) {
 	// a/b are primitive kinds, Elem() causes a panic.
 	var err1 primKindError = "abc"
 	var err2 primKindError = "abc"
-	diff := deep.Equal(err1, err2)
+	d := deep.NewDiffer()
+	diff := d.Equal(err1, err2)
 	if len(diff) != 0 {
 		t.Fatalf("expected zero diffs, got %d: %s", len(diff), diff)
 	}
 
 	err2 = "def"
-	diff = deep.Equal(err1, err2)
+	diff = d.Equal(err1, err2)
 	if len(diff) != 1 {
 		t.Fatalf("expected 1 diff, got %d: %s", len(diff), diff)
 	}
@@ -1416,12 +1401,10 @@ func TestErrorUnexported(t *testing.T) {
 	type foo struct {
 		bar error
 	}
-	defaultCompareUnexportedFields := deep.CompareUnexportedFields
-	deep.CompareUnexportedFields = true
-	defer func() { deep.CompareUnexportedFields = defaultCompareUnexportedFields }()
 	e1 := foo{bar: fmt.Errorf("error")}
 	e2 := foo{bar: fmt.Errorf("error")}
-	deep.Equal(e1, e2)
+	d := deep.NewDiffer(deep.CompareUnexportedFields(true))
+	d.Equal(e1, e2)
 }
 
 func TestNil(t *testing.T) {
@@ -1432,15 +1415,16 @@ func TestNil(t *testing.T) {
 
 	mark := student{"mark", 10}
 	var someNilThing interface{} = nil
-	diff := deep.Equal(someNilThing, mark)
+	d := deep.NewDiffer()
+	diff := d.Equal(someNilThing, mark)
 	if diff == nil {
 		t.Error("Nil value to comparison should not be equal")
 	}
-	diff = deep.Equal(mark, someNilThing)
+	diff = d.Equal(mark, someNilThing)
 	if diff == nil {
 		t.Error("Nil value to comparison should not be equal")
 	}
-	diff = deep.Equal(someNilThing, someNilThing)
+	diff = d.Equal(someNilThing, someNilThing)
 	if diff != nil {
 		t.Error("Nil value to comparison should not be equal")
 	}
@@ -1461,16 +1445,16 @@ func TestFunc(t *testing.T) {
 	}
 
 	// CompareFunctions is off by default, so this should report no diff:
-	diff := deep.Equal(t1, t2)
+	defaultDiffer := deep.NewDiffer()
+	diff := defaultDiffer.Equal(t1, t2)
 	if len(diff) != 0 {
 		t.Fatalf("expected 0 diff when CompareFunctions=false, got %d: %s", len(diff), diff)
 	}
 
-	deep.CompareFunctions = true
-	defer func() { deep.CompareFunctions = false }()
+	d := deep.NewDiffer(deep.CompareFunctions(true))
 
 	// Two funcs are not equal (even if they're the same func)
-	diff = deep.Equal(t1, t2)
+	diff = d.Equal(t1, t2)
 	if len(diff) != 1 {
 		t.Fatalf("expected 1 diff, got %d: %s", len(diff), diff)
 	}
@@ -1480,7 +1464,7 @@ func TestFunc(t *testing.T) {
 
 	// One func nil, the other set: not equal
 	t1.Function = nil
-	diff = deep.Equal(t1, t2)
+	diff = d.Equal(t1, t2)
 	if len(diff) != 1 {
 		t.Fatalf("expected 1 diff, got %d: %s", len(diff), diff)
 	}
@@ -1491,7 +1475,7 @@ func TestFunc(t *testing.T) {
 	// Two nil funcs are equal
 	t1.Function = nil
 	t2.Function = nil
-	diff = deep.Equal(t1, t2)
+	diff = d.Equal(t1, t2)
 	if len(diff) != 0 {
 		t.Errorf("expected 0 diff, got %d: %s", len(diff), diff)
 	}
@@ -1503,7 +1487,8 @@ func TestSliceOrderString(t *testing.T) {
 	// These are equal if we ignore order
 	a := []string{"foo", "bar"}
 	b := []string{"bar", "foo"}
-	diff := deep.Equal(a, b, deep.FLAG_IGNORE_SLICE_ORDER)
+	d := deep.NewDiffer()
+	diff := d.Equal(a, b, deep.FLAG_IGNORE_SLICE_ORDER)
 	if len(diff) != 0 {
 		t.Fatalf("expected 0 diff, got %d: %s", len(diff), diff)
 	}
@@ -1511,7 +1496,7 @@ func TestSliceOrderString(t *testing.T) {
 	// Equal with dupes
 	a = []string{"foo", "foo", "bar"}
 	b = []string{"bar", "foo", "foo"}
-	diff = deep.Equal(a, b, deep.FLAG_IGNORE_SLICE_ORDER)
+	diff = d.Equal(a, b, deep.FLAG_IGNORE_SLICE_ORDER)
 	if len(diff) != 0 {
 		t.Fatalf("expected 0 diff, got %d: %s", len(diff), diff)
 	}
@@ -1519,7 +1504,7 @@ func TestSliceOrderString(t *testing.T) {
 	// NOT equal with dupes
 	a = []string{"foo", "foo", "bar"}
 	b = []string{"bar", "bar", "foo"}
-	diff = deep.Equal(a, b, deep.FLAG_IGNORE_SLICE_ORDER)
+	diff = d.Equal(a, b, deep.FLAG_IGNORE_SLICE_ORDER)
 	if len(diff) != 2 {
 		t.Fatalf("expected 2 diff, got %d: %s", len(diff), diff)
 	}
@@ -1535,7 +1520,7 @@ func TestSliceOrderString(t *testing.T) {
 	// NOT equal with one missing
 	a = []string{"foo", "bar"}
 	b = []string{"bar", "foo", "gone"}
-	diff = deep.Equal(a, b, deep.FLAG_IGNORE_SLICE_ORDER)
+	diff = d.Equal(a, b, deep.FLAG_IGNORE_SLICE_ORDER)
 	if len(diff) != 1 {
 		t.Fatalf("expected 2 diff, got %d: %s", len(diff), diff)
 	}
@@ -1546,7 +1531,7 @@ func TestSliceOrderString(t *testing.T) {
 	// NOT equal at all
 	a = []string{"foo", "bar"}
 	b = []string{"x"}
-	diff = deep.Equal(a, b, deep.FLAG_IGNORE_SLICE_ORDER)
+	diff = d.Equal(a, b, deep.FLAG_IGNORE_SLICE_ORDER)
 	if len(diff) != 3 {
 		t.Fatalf("expected 2 diff, got %d: %s", len(diff), diff)
 	}
@@ -1576,16 +1561,13 @@ func TestSliceOrderStruct(t *testing.T) {
 		{i: 2},
 		{i: 1},
 	}
-	diff := deep.Equal(a, b, deep.FLAG_IGNORE_SLICE_ORDER)
+	diff := deep.NewDiffer().Equal(a, b, deep.FLAG_IGNORE_SLICE_ORDER)
 	if len(diff) != 0 {
 		t.Fatalf("expected 0 diff, got %d: %s", len(diff), diff)
 	}
 }
 
 func TestNilPointersAreZero(t *testing.T) {
-	defaultNilPointersAreZero := deep.NilPointersAreZero
-	deep.NilPointersAreZero = true
-	defer func() { deep.NilPointersAreZero = defaultNilPointersAreZero }()
 
 	type T struct {
 		S *string
@@ -1594,13 +1576,14 @@ func TestNilPointersAreZero(t *testing.T) {
 	a := T{S: nil}
 	b := T{S: new(string)}
 
-	diff := deep.Equal(a, b)
+	d := deep.NewDiffer(deep.NilPointersAreZero(true))
+	diff := d.Equal(a, b)
 	if len(diff) != 0 {
 		t.Fatalf("expected 0 diff, got %d: %s", len(diff), diff)
 	}
 
 	*b.S = "hello"
-	diff = deep.Equal(a, b)
+	diff = d.Equal(a, b)
 	if len(diff) != 1 {
 		t.Fatalf("expected 1 diff, got %d: %s", len(diff), diff)
 	}
@@ -1608,7 +1591,7 @@ func TestNilPointersAreZero(t *testing.T) {
 	a.S = new(string)
 	*a.S = "hi again"
 	b.S = nil
-	diff = deep.Equal(a, b)
+	diff = d.Equal(a, b)
 	if len(diff) != 1 {
 		t.Fatalf("expected 1 diff, got %d: %s", len(diff), diff)
 	}

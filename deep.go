@@ -11,42 +11,117 @@ import (
 	"strings"
 )
 
-var (
-	// FloatPrecision is the number of decimal places to round float values
-	// to when comparing.
-	FloatPrecision = 10
+type DeepOpt func(Differ) Differ
 
-	// MaxDiff specifies the maximum number of differences to return.
-	MaxDiff = 10
+// FloatPrecision is the number of decimal places to round float values
+// to when comparing.
+func FloatPrecision(p uint) DeepOpt {
+	return func(d Differ) Differ {
+		d.floatPrecision = p
+		return d
+	}
+}
 
-	// MaxDepth specifies the maximum levels of a struct to recurse into,
-	// if greater than zero. If zero, there is no limit.
-	MaxDepth = 0
+const floatPrecision = 10
 
-	// LogErrors causes errors to be logged to STDERR when true.
-	LogErrors = false
+// MaxDiff specifies the maximum number of differences to return.
+func MaxDiff(m int) DeepOpt {
+	return func(d Differ) Differ {
+		d.maxDiff = uint(m)
+		return d
+	}
+}
 
-	// CompareUnexportedFields causes unexported struct fields, like s in
-	// T{s int}, to be compared when true. This does not work for comparing
-	// error or Time types on unexported fields because methods on unexported
-	// fields cannot be called.
-	CompareUnexportedFields = false
+const maxDiff = 10
 
-	// CompareFunctions compares functions the same as reflect.DeepEqual:
-	// only two nil functions are equal. Every other combination is not equal.
-	// This is disabled by default because previous versions of this package
-	// ignored functions. Enabling it can possibly report new diffs.
-	CompareFunctions = false
+// MaxDepth specifies the maximum levels of a struct to recurse into,
+// if greater than zero. If zero, there is no limit.
+func MaxDepth(m uint) DeepOpt {
+	return func(d Differ) Differ {
+		d.maxDepth = m
+		return d
+	}
+}
 
-	// NilSlicesAreEmpty causes a nil slice to be equal to an empty slice.
-	NilSlicesAreEmpty = false
+const maxDepth = 0
 
-	// NilMapsAreEmpty causes a nil map to be equal to an empty map.
-	NilMapsAreEmpty = false
+// LogErrors causes errors to be logged to STDERR when true.
+func LogErrors(b bool) DeepOpt {
+	return func(differ Differ) Differ {
+		differ.logErrors = b
+		return differ
+	}
+}
 
-	// NilPointersAreZero causes a nil pointer to be equal to a zero value.
-	NilPointersAreZero = false
-)
+const logErrors = false
+
+// CompareUnexportedFields causes unexported struct fields, like s in
+// T{s int}, to be compared when true. This does not work for comparing
+// error or Time types on unexported fields because methods on unexported
+// fields cannot be called.
+func CompareUnexportedFields(b bool) DeepOpt {
+	return func(differ Differ) Differ {
+		differ.compareUnexportedFields = b
+		return differ
+	}
+}
+
+const compareUnexportedFields = false
+
+// CompareFunctions compares functions the same as reflect.DeepEqual:
+// only two nil functions are equal. Every other combination is not equal.
+// This is disabled by default because previous versions of this package
+// ignored functions. Enabling it can possibly report new diffs.
+func CompareFunctions(b bool) DeepOpt {
+	return func(differ Differ) Differ {
+		differ.compareFunctions = b
+		return differ
+	}
+}
+
+const compareFunctions = false
+
+// NilSlicesAreEmpty causes a nil slice to be equal to an empty slice.
+func NilSlicesAreEmpty(b bool) DeepOpt {
+	return func(differ Differ) Differ {
+		differ.nilSlicesAreEmpty = b
+		return differ
+	}
+}
+
+const nilSlicesAreEmpty = false
+
+// NilMapsAreEmpty causes a nil map to be equal to an empty map.
+func NilMapsAreEmpty(b bool) DeepOpt {
+	return func(differ Differ) Differ {
+		differ.nilMapsAreEmpty = b
+		return differ
+	}
+}
+
+const nilMapsAreEmpty = false
+
+// NilPointersAreZero causes a nil pointer to be equal to a zero value.
+func NilPointersAreZero(b bool) DeepOpt {
+	return func(differ Differ) Differ {
+		differ.nilPointersAreZero = b
+		return differ
+	}
+}
+
+const nilPointersAreZero = false
+
+type Differ struct {
+	floatPrecision          uint
+	maxDiff                 uint
+	maxDepth                uint
+	logErrors               bool
+	compareUnexportedFields bool
+	compareFunctions        bool
+	nilSlicesAreEmpty       bool
+	nilMapsAreEmpty         bool
+	nilPointersAreZero      bool
+}
 
 var (
 	// ErrMaxRecursion is logged when MaxDepth is reached.
@@ -73,6 +148,7 @@ const (
 )
 
 type cmp struct {
+	Differ
 	diff        []string
 	buff        []string
 	floatFormat string
@@ -80,6 +156,38 @@ type cmp struct {
 }
 
 var errorType = reflect.TypeOf((*error)(nil)).Elem()
+
+func NewDiffer(opts ...DeepOpt) (d Differ) {
+	d = Differ{
+		floatPrecision:          floatPrecision,
+		maxDiff:                 maxDiff,
+		maxDepth:                maxDepth,
+		logErrors:               logErrors,
+		compareUnexportedFields: compareUnexportedFields,
+		compareFunctions:        compareFunctions,
+		nilSlicesAreEmpty:       nilSlicesAreEmpty,
+		nilMapsAreEmpty:         nilMapsAreEmpty,
+		nilPointersAreZero:      nilPointersAreZero,
+	}
+	for opt := range opts {
+		d = opts[opt](d)
+	}
+	return d
+}
+
+type Delta []string
+
+func (d Delta) Equal(other Delta) bool {
+	if len(d) != len(other) {
+		return false
+	}
+	for i := range d {
+		if d[i] != other[i] {
+			return false
+		}
+	}
+	return true
+}
 
 // Equal compares variables a and b, recursing into their structure up to
 // MaxDepth levels deep (if greater than zero), and returns a list of differences,
@@ -91,13 +199,14 @@ var errorType = reflect.TypeOf((*error)(nil)).Elem()
 //
 // When comparing a struct, if a field has the tag `deep:"-"` then it will be
 // ignored.
-func Equal(a, b interface{}, flags ...interface{}) []string {
+func (d Differ) Equal(a, b interface{}, flags ...interface{}) Delta {
 	aVal := reflect.ValueOf(a)
 	bVal := reflect.ValueOf(b)
 	c := &cmp{
+		Differ:      d,
 		diff:        []string{},
 		buff:        []string{},
-		floatFormat: fmt.Sprintf("%%.%df", FloatPrecision),
+		floatFormat: fmt.Sprintf("%%.%df", d.floatPrecision),
 		flag:        map[byte]bool{},
 	}
 	for i := range flags {
@@ -121,9 +230,17 @@ func Equal(a, b interface{}, flags ...interface{}) []string {
 	return nil // no diffs
 }
 
-func (c *cmp) equals(a, b reflect.Value, level int) {
-	if MaxDepth > 0 && level > MaxDepth {
-		logError(ErrMaxRecursion)
+func (d Differ) With(opts ...DeepOpt) (r Differ) {
+	r = d
+	for i := range opts {
+		r = opts[i](r)
+	}
+	return r
+}
+
+func (c *cmp) equals(a, b reflect.Value, level uint) {
+	if c.maxDepth > 0 && level > c.maxDepth {
+		c.logError(ErrMaxRecursion)
 		return
 	}
 
@@ -153,7 +270,7 @@ func (c *cmp) equals(a, b reflect.Value, level int) {
 			bFullType := bType.PkgPath() + "." + bType.Name()
 			c.saveDiff(aFullType, bFullType)
 		}
-		logError(ErrTypeMismatch)
+		c.logError(ErrTypeMismatch)
 		return
 	}
 
@@ -193,10 +310,10 @@ func (c *cmp) equals(a, b reflect.Value, level int) {
 		if bElem {
 			b = b.Elem()
 		}
-		if aElem && NilPointersAreZero && !a.IsValid() && b.IsValid() {
+		if aElem && c.nilPointersAreZero && !a.IsValid() && b.IsValid() {
 			a = reflect.Zero(b.Type())
 		}
-		if bElem && NilPointersAreZero && !b.IsValid() && a.IsValid() {
+		if bElem && c.nilPointersAreZero && !b.IsValid() && a.IsValid() {
 			b = reflect.Zero(a.Type())
 		}
 		c.equals(a, b, level+1)
@@ -244,7 +361,7 @@ func (c *cmp) equals(a, b reflect.Value, level int) {
 		}
 
 		for i := 0; i < a.NumField(); i++ {
-			if aType.Field(i).PkgPath != "" && !CompareUnexportedFields {
+			if aType.Field(i).PkgPath != "" && !c.compareUnexportedFields {
 				continue // skip unexported field, e.g. s in type T struct {s string}
 			}
 
@@ -264,7 +381,7 @@ func (c *cmp) equals(a, b reflect.Value, level int) {
 
 			c.pop() // pop field name from buff
 
-			if len(c.diff) >= MaxDiff {
+			if c.isAtMaxDiff() {
 				break
 			}
 		}
@@ -285,7 +402,7 @@ func (c *cmp) equals(a, b reflect.Value, level int) {
 		*/
 
 		if a.IsNil() || b.IsNil() {
-			if NilMapsAreEmpty {
+			if c.nilMapsAreEmpty {
 				if a.IsNil() && b.Len() != 0 {
 					c.saveDiff("<nil map>", b)
 					return
@@ -320,7 +437,7 @@ func (c *cmp) equals(a, b reflect.Value, level int) {
 
 			c.pop()
 
-			if len(c.diff) >= MaxDiff {
+			if c.isAtMaxDiff() {
 				return
 			}
 		}
@@ -333,7 +450,7 @@ func (c *cmp) equals(a, b reflect.Value, level int) {
 			c.push(fmt.Sprintf("map[%v]", key))
 			c.saveDiff("<does not have key>", b.MapIndex(key))
 			c.pop()
-			if len(c.diff) >= MaxDiff {
+			if c.isAtMaxDiff() {
 				return
 			}
 		}
@@ -343,12 +460,12 @@ func (c *cmp) equals(a, b reflect.Value, level int) {
 			c.push(fmt.Sprintf("array[%d]", i))
 			c.equals(a.Index(i), b.Index(i), level+1)
 			c.pop()
-			if len(c.diff) >= MaxDiff {
+			if c.isAtMaxDiff() {
 				break
 			}
 		}
 	case reflect.Slice:
-		if NilSlicesAreEmpty {
+		if c.nilSlicesAreEmpty {
 			if a.IsNil() && b.Len() != 0 {
 				c.saveDiff("<nil slice>", b)
 				return
@@ -411,7 +528,7 @@ func (c *cmp) equals(a, b reflect.Value, level int) {
 					c.saveDiff("<no value>", b.Index(i))
 				}
 				c.pop()
-				if len(c.diff) >= MaxDiff {
+				if c.isAtMaxDiff() {
 					break
 				}
 			}
@@ -451,7 +568,7 @@ func (c *cmp) equals(a, b reflect.Value, level int) {
 			c.saveDiff(a.String(), b.String())
 		}
 	case reflect.Func:
-		if CompareFunctions {
+		if c.compareFunctions {
 			if !a.IsNil() || !b.IsNil() {
 				aVal, bVal := "nil func", "nil func"
 				if !a.IsNil() {
@@ -464,8 +581,12 @@ func (c *cmp) equals(a, b reflect.Value, level int) {
 			}
 		}
 	default:
-		logError(ErrNotHandled)
+		c.logError(ErrNotHandled)
 	}
+}
+
+func (c *cmp) isAtMaxDiff() bool {
+	return uint(len(c.diff)) >= c.maxDiff
 }
 
 func (c *cmp) push(name string) {
@@ -506,8 +627,8 @@ func (c *cmp) cmpMapValueCounts(a, b reflect.Value, am, bm map[interface{}]int, 
 	}
 }
 
-func logError(err error) {
-	if LogErrors {
+func (c *cmp) logError(err error) {
+	if c.logErrors {
 		log.Println(err)
 	}
 }
