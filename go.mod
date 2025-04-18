@@ -1,3 +1,3 @@
-module github.com/go-test/deep
+module github.com/acorello/deep
 
 go 1.16
