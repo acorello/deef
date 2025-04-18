@@ -1167,12 +1167,12 @@ func TestTimeUnexported(t *testing.T) {
 }
 
 func TestInterface(t *testing.T) {
-	a := map[string]interface{}{
+	a := map[string]any{
 		"foo": map[string]string{
 			"bar": "a",
 		},
 	}
-	b := map[string]interface{}{
+	b := map[string]any{
 		"foo": map[string]string{
 			"bar": "b",
 		},
@@ -1193,10 +1193,10 @@ func TestInterface2(t *testing.T) {
 		}
 	}()
 
-	a := map[string]interface{}{
+	a := map[string]any{
 		"bar": 1,
 	}
-	b := map[string]interface{}{
+	b := map[string]any{
 		"bar": 1.23,
 	}
 	diff := deep.NewDiffer().Equal(a, b)
@@ -1210,10 +1210,10 @@ func TestInterface2(t *testing.T) {
 
 func TestInterface3(t *testing.T) {
 	type Value struct{ int }
-	a := map[string]interface{}{
+	a := map[string]any{
 		"foo": &Value{},
 	}
-	b := map[string]interface{}{
+	b := map[string]any{
 		"foo": 1.23,
 	}
 	diff := deep.NewDiffer().Equal(a, b)
@@ -1414,7 +1414,7 @@ func TestNil(t *testing.T) {
 	}
 
 	mark := student{"mark", 10}
-	var someNilThing interface{} = nil
+	var someNilThing any = nil
 	d := deep.NewDiffer()
 	diff := d.Equal(someNilThing, mark)
 	if diff == nil {

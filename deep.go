@@ -273,7 +273,7 @@ func (c *cmp) equals(a, b reflect.Value, level uint) {
 		return
 	}
 
-	// Dereference pointers and interface{}
+	// Dereference pointers and any
 	if aElem || bElem {
 		if aElem {
 			a = a.Elem()
@@ -473,11 +473,11 @@ func (c *cmp) equals(a, b reflect.Value, level uint) {
 			// to another value v2. Then equality is determiend by value
 			// count: presuming v1==v2, then the slics are equal if there
 			// are equal numbers of v1 in each slice.
-			am := map[interface{}]int{}
+			am := map[any]int{}
 			for i := 0; i < a.Len(); i++ {
 				am[a.Index(i).Interface()] += 1
 			}
-			bm := map[interface{}]int{}
+			bm := map[any]int{}
 			for i := 0; i < b.Len(); i++ {
 				bm[b.Index(i).Interface()] += 1
 			}
@@ -570,7 +570,7 @@ func (c *cmp) pop() {
 	}
 }
 
-func (c *cmp) saveDiff(aval, bval interface{}) {
+func (c *cmp) saveDiff(aval, bval any) {
 	if len(c.buff) > 0 {
 		varName := strings.Join(c.buff, ".")
 		c.diff = append(c.diff, fmt.Sprintf("%s: %v != %v", varName, aval, bval))
@@ -579,7 +579,7 @@ func (c *cmp) saveDiff(aval, bval interface{}) {
 	}
 }
 
-func (c *cmp) cmpMapValueCounts(a, b reflect.Value, am, bm map[interface{}]int, a2b bool) {
+func (c *cmp) cmpMapValueCounts(a, b reflect.Value, am, bm map[any]int, a2b bool) {
 	for v := range am {
 		aCount, _ := am[v]
 		bCount, _ := bm[v]
