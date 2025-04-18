@@ -43,7 +43,7 @@ func TestFloat(t *testing.T) {
 		t.Error("no diff")
 	}
 
-	differFP6 := deep.NewDiffer(deep.FloatPrecision(6))
+	differFP6 := deep.NewDiffer().FloatPrecision(6)
 	diff = differFP6.Equal(1.1234561, 1.1234562)
 	if len(diff) > 0 {
 		t.Error("should be equal:", diff)
@@ -156,7 +156,7 @@ func TestTypeMismatch(t *testing.T) {
 func TestKindMismatch(t *testing.T) {
 	var x int = 100
 	var y float64 = 100
-	diff := deep.NewDiffer(deep.LogErrors(true)).Equal(x, y)
+	diff := deep.NewDiffer().LogErrors(true).Equal(x, y)
 	if diff == nil {
 		t.Fatal("no diff")
 	}
@@ -197,13 +197,13 @@ func TestDeepRecursion(t *testing.T) {
 		},
 	}
 	// No diffs because MaxDepth=2 prevents seeing the diff at 3rd level down
-	dMaxDepth2 := deep.NewDiffer(deep.MaxDepth(2))
+	dMaxDepth2 := deep.NewDiffer().MaxDepth(2)
 	diff := dMaxDepth2.Equal(foo, bar)
-	if diff.IsEmpty() {
+	if !diff.IsEmpty() {
 		t.Errorf("got %d diffs, expected none: %v", len(diff), diff)
 	}
 
-	dMaxDepth4 := deep.NewDiffer(deep.MaxDepth(4))
+	dMaxDepth4 := deep.NewDiffer().MaxDepth(4)
 	diff = dMaxDepth4.Equal(foo, bar)
 	if diff == nil {
 		t.Fatal("no diff")
@@ -221,7 +221,7 @@ func TestMaxDiff(t *testing.T) {
 	b := []int{0, 0, 0, 0, 0, 0, 0}
 
 	wantDiffLen := 3
-	dMaxDiff3 := deep.NewDiffer(deep.MaxDiff(wantDiffLen))
+	dMaxDiff3 := deep.NewDiffer().MaxDiff(wantDiffLen)
 	diff := dMaxDiff3.Equal(a, b)
 	if diff == nil {
 		t.Fatal("no diffs")
@@ -240,7 +240,7 @@ func TestMaxDiff(t *testing.T) {
 	}
 	t1 := fiveFields{1, 2, 3, 4, 5}
 	t2 := fiveFields{0, 0, 0, 0, 0}
-	dMaxDiff3UnexportedTrue := dMaxDiff3.With(deep.CompareUnexportedFields(true))
+	dMaxDiff3UnexportedTrue := dMaxDiff3.CompareUnexportedFields(true)
 	diff = dMaxDiff3UnexportedTrue.Equal(t1, t2)
 	if diff == nil {
 		t.Fatal("no diffs")
@@ -477,7 +477,7 @@ func TestStructWithTags(t *testing.T) {
 		},
 	}
 
-	d := deep.NewDiffer(deep.CompareUnexportedFields(true))
+	d := deep.NewDiffer().CompareUnexportedFields(true)
 	gotDelta := d.Equal(sa, sb)
 
 	want := deep.Delta([]string{
@@ -878,7 +878,7 @@ func TestNilSlicesAreEmpty(t *testing.T) {
 	var c []int
 
 	// Empty is equal to nil.
-	d := deep.NewDiffer(deep.NilSlicesAreEmpty(true))
+	d := deep.NewDiffer().NilSlicesAreEmpty(true)
 	diff := d.Equal(b, c)
 	if len(diff) > 0 {
 		t.Error("should be equal:", diff)
@@ -946,7 +946,7 @@ func TestNilMapsAreEmpty(t *testing.T) {
 	var c map[int]int
 
 	// Empty is equal to nil.
-	d := deep.NewDiffer(deep.NilMapsAreEmpty(true))
+	d := deep.NewDiffer().NilMapsAreEmpty(true)
 	diff := d.Equal(b, c)
 	if len(diff) > 0 {
 		t.Error("should be equal:", diff)
@@ -1144,7 +1144,7 @@ func TestTimeUnexported(t *testing.T) {
 	}
 	htA := &hiddenTime{t: now}
 	htB := &hiddenTime{t: now}
-	d := deep.NewDiffer(deep.CompareUnexportedFields(true))
+	d := deep.NewDiffer().CompareUnexportedFields(true)
 	diff := d.Equal(htA, htB)
 	if len(diff) > 0 {
 		t.Error("should be equal:", diff)
@@ -1403,7 +1403,7 @@ func TestErrorUnexported(t *testing.T) {
 	}
 	e1 := foo{bar: fmt.Errorf("error")}
 	e2 := foo{bar: fmt.Errorf("error")}
-	d := deep.NewDiffer(deep.CompareUnexportedFields(true))
+	d := deep.NewDiffer().CompareUnexportedFields(true)
 	d.Equal(e1, e2)
 }
 
@@ -1451,7 +1451,7 @@ func TestFunc(t *testing.T) {
 		t.Fatalf("expected 0 diff when CompareFunctions=false, got %d: %s", len(diff), diff)
 	}
 
-	d := deep.NewDiffer(deep.CompareFunctions(true))
+	d := deep.NewDiffer().CompareFunctions(true)
 
 	// Two funcs are not equal (even if they're the same func)
 	diff = d.Equal(t1, t2)
@@ -1487,7 +1487,7 @@ func TestSliceOrderString(t *testing.T) {
 	// These are equal if we ignore order
 	a := []string{"foo", "bar"}
 	b := []string{"bar", "foo"}
-	d := deep.NewDiffer(deep.IgnoreSliceOrder(true))
+	d := deep.NewDiffer().IgnoreSliceOrder(true)
 	diff := d.Equal(a, b)
 	if len(diff) != 0 {
 		t.Fatalf("expected 0 diff, got %d: %s", len(diff), diff)
@@ -1561,7 +1561,7 @@ func TestSliceOrderStruct(t *testing.T) {
 		{i: 2},
 		{i: 1},
 	}
-	d := deep.NewDiffer(deep.IgnoreSliceOrder(true))
+	d := deep.NewDiffer().IgnoreSliceOrder(true)
 	diff := d.Equal(a, b)
 	if len(diff) != 0 {
 		t.Fatalf("expected 0 diff, got %d: %s", len(diff), diff)
@@ -1577,7 +1577,7 @@ func TestNilPointersAreZero(t *testing.T) {
 	a := T{S: nil}
 	b := T{S: new(string)}
 
-	d := deep.NewDiffer(deep.NilPointersAreZero(true))
+	d := deep.NewDiffer().NilPointersAreZero(true)
 	diff := d.Equal(a, b)
 	if len(diff) != 0 {
 		t.Fatalf("expected 0 diff, got %d: %s", len(diff), diff)

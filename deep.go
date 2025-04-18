@@ -20,16 +20,12 @@ type Differ struct {
 	nilSlicesAreEmpty       bool
 }
 
-func NewDiffer(opts ...Opt) (d Differ) {
-	d = Differ{
+func NewDiffer() Differ {
+	return Differ{
 		// options where zero-value equals default value are omitted
 		floatPrecision: 10,
 		maxDiff:        10,
 	}
-	for opt := range opts {
-		d = opts[opt](d)
-	}
-	return d
 }
 
 type Delta []string
@@ -70,94 +66,66 @@ func (d Differ) Equal(a, b any) Delta {
 	return c.delta(a, b)
 }
 
-func (d Differ) With(opts ...Opt) (r Differ) {
-	r = d
-	for i := range opts {
-		r = opts[i](r)
-	}
-	return r
-}
-
-type Opt func(Differ) Differ
-
 // FloatPrecision is the number of decimal places to round float values
 // to when comparing.
-func FloatPrecision(p uint) Opt {
-	return func(d Differ) Differ {
-		d.floatPrecision = p
-		return d
-	}
+func (d Differ) FloatPrecision(p uint) Differ {
+	d.floatPrecision = p
+	return d
 }
 
 // MaxDiff specifies the maximum number of differences to return.
-func MaxDiff(m int) Opt {
-	return func(d Differ) Differ {
-		d.maxDiff = uint(m)
-		return d
-	}
+func (d Differ) MaxDiff(m int) Differ {
+	d.maxDiff = uint(m)
+	return d
 }
 
 // MaxDepth specifies the maximum levels of a struct to recurse into,
 // if greater than zero. If zero, there is no limit.
-func MaxDepth(m uint) Opt {
-	return func(d Differ) Differ {
-		d.maxDepth = m
-		return d
-	}
+func (d Differ) MaxDepth(m uint) Differ {
+	d.maxDepth = m
+	return d
 }
 
 // LogErrors causes errors to be logged to STDERR when true.
-func LogErrors(b bool) Opt {
-	return func(differ Differ) Differ {
-		differ.logErrors = b
-		return differ
-	}
+func (d Differ) LogErrors(b bool) Differ {
+	d.logErrors = b
+	return d
 }
 
 // CompareUnexportedFields causes unexported struct fields, like s in
 // T{s int}, to be compared when true. This does not work for comparing
 // error or Time types on unexported fields because methods on unexported
 // fields cannot be called.
-func CompareUnexportedFields(b bool) Opt {
-	return func(differ Differ) Differ {
-		differ.compareUnexportedFields = b
-		return differ
-	}
+func (d Differ) CompareUnexportedFields(b bool) Differ {
+	d.compareUnexportedFields = b
+	return d
 }
 
 // CompareFunctions compares functions the same as reflect.DeepEqual:
 // only two nil functions are equal. Every other combination is not equal.
 // This is disabled by default because previous versions of this package
 // ignored functions. Enabling it can possibly report new diffs.
-func CompareFunctions(b bool) Opt {
-	return func(differ Differ) Differ {
-		differ.compareFunctions = b
-		return differ
-	}
+func (d Differ) CompareFunctions(b bool) Differ {
+	d.compareFunctions = b
+	return d
 }
 
 // NilSlicesAreEmpty causes a nil slice to be equal to an empty slice.
-func NilSlicesAreEmpty(b bool) Opt {
-	return func(differ Differ) Differ {
-		differ.nilSlicesAreEmpty = b
-		return differ
-	}
+func (d Differ) NilSlicesAreEmpty(b bool) Differ {
+	d.nilSlicesAreEmpty = b
+	return d
 }
 
 // NilMapsAreEmpty causes a nil map to be equal to an empty map.
-func NilMapsAreEmpty(b bool) Opt {
-	return func(differ Differ) Differ {
-		differ.nilMapsAreEmpty = b
-		return differ
-	}
+func (d Differ) NilMapsAreEmpty(b bool) Differ {
+	d.nilMapsAreEmpty = b
+	return d
 }
 
 // NilPointersAreZero causes a nil pointer to be equal to a zero value.
-func NilPointersAreZero(b bool) Opt {
-	return func(differ Differ) Differ {
-		differ.nilPointersAreZero = b
-		return differ
-	}
+func (d Differ) NilPointersAreZero(b bool) Differ {
+	d.nilPointersAreZero = b
+	return d
 }
 
 // IgnoreSliceOrder causes Equal to ignore slice order so that
@@ -165,9 +133,7 @@ func NilPointersAreZero(b bool) Opt {
 // like numbers and strings are supported. Slices of complex types,
 // like []T where T is a struct, are undefined because Equal does not
 // recurse into the slice value when this flag is enabled.
-func IgnoreSliceOrder(b bool) Opt {
-	return func(differ Differ) Differ {
-		differ.ignoreSliceOrder = b
-		return differ
-	}
+func (d Differ) IgnoreSliceOrder(b bool) Differ {
+	d.ignoreSliceOrder = b
+	return d
 }
