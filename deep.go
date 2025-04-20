@@ -5,6 +5,7 @@ package deep
 
 import (
 	"fmt"
+	"slices"
 )
 
 type Differ struct {
@@ -20,16 +21,27 @@ type Differ struct {
 	nilSlicesAreEmpty       bool
 }
 
-func NewDiffer(opts ...Opt) (d Differ) {
+func New() (d Differ) {
+	d, err := NewDiffer()
+	if err != nil {
+		panic(fmt.Errorf("factory method with default params failed: %w", err))
+	}
+	return d
+}
+
+func NewDiffer(opts ...Opt) (d Differ, err error) {
 	d = Differ{
 		// options where zero-value equals default value are omitted
 		floatPrecision: 10,
 		maxDiff:        10,
 	}
-	for opt := range opts {
-		d = opts[opt](d)
+	for opt := range slices.Values(opts) {
+		err = opt(&d)
+		if err != nil {
+			break
+		}
 	}
-	return d
+	return d, err
 }
 
 type Delta []string
@@ -70,47 +82,50 @@ func (d Differ) Equal(a, b any) Delta {
 	return c.delta(a, b)
 }
 
-func (d Differ) With(opts ...Opt) (r Differ) {
+func (d Differ) With(opts ...Opt) (r Differ, err error) {
 	r = d
-	for i := range opts {
-		r = opts[i](r)
+	for opt := range slices.Values(opts) {
+		err = opt(&r)
+		if err != nil {
+			break
+		}
 	}
-	return r
+	return r, err
 }
 
-type Opt func(Differ) Differ
+type Opt func(*Differ) error
 
 // FloatPrecision is the number of decimal places to round float values
 // to when comparing.
 func FloatPrecision(p uint) Opt {
-	return func(d Differ) Differ {
+	return func(d *Differ) error {
 		d.floatPrecision = p
-		return d
+		return nil
 	}
 }
 
 // MaxDiff specifies the maximum number of differences to return.
 func MaxDiff(m int) Opt {
-	return func(d Differ) Differ {
+	return func(d *Differ) error {
 		d.maxDiff = uint(m)
-		return d
+		return nil
 	}
 }
 
 // MaxDepth specifies the maximum levels of a struct to recurse into,
 // if greater than zero. If zero, there is no limit.
 func MaxDepth(m uint) Opt {
-	return func(d Differ) Differ {
+	return func(d *Differ) error {
 		d.maxDepth = m
-		return d
+		return nil
 	}
 }
 
 // LogErrors causes errors to be logged to STDERR when true.
 func LogErrors(b bool) Opt {
-	return func(differ Differ) Differ {
+	return func(differ *Differ) error {
 		differ.logErrors = b
-		return differ
+		return nil
 	}
 }
 
@@ -119,9 +134,9 @@ func LogErrors(b bool) Opt {
 // error or Time types on unexported fields because methods on unexported
 // fields cannot be called.
 func CompareUnexportedFields(b bool) Opt {
-	return func(differ Differ) Differ {
+	return func(differ *Differ) error {
 		differ.compareUnexportedFields = b
-		return differ
+		return nil
 	}
 }
 
@@ -130,33 +145,33 @@ func CompareUnexportedFields(b bool) Opt {
 // This is disabled by default because previous versions of this package
 // ignored functions. Enabling it can possibly report new diffs.
 func CompareFunctions(b bool) Opt {
-	return func(differ Differ) Differ {
+	return func(differ *Differ) error {
 		differ.compareFunctions = b
-		return differ
+		return nil
 	}
 }
 
 // NilSlicesAreEmpty causes a nil slice to be equal to an empty slice.
 func NilSlicesAreEmpty(b bool) Opt {
-	return func(differ Differ) Differ {
+	return func(differ *Differ) error {
 		differ.nilSlicesAreEmpty = b
-		return differ
+		return nil
 	}
 }
 
 // NilMapsAreEmpty causes a nil map to be equal to an empty map.
 func NilMapsAreEmpty(b bool) Opt {
-	return func(differ Differ) Differ {
+	return func(differ *Differ) error {
 		differ.nilMapsAreEmpty = b
-		return differ
+		return nil
 	}
 }
 
 // NilPointersAreZero causes a nil pointer to be equal to a zero value.
 func NilPointersAreZero(b bool) Opt {
-	return func(differ Differ) Differ {
+	return func(differ *Differ) error {
 		differ.nilPointersAreZero = b
-		return differ
+		return nil
 	}
 }
 
@@ -166,8 +181,8 @@ func NilPointersAreZero(b bool) Opt {
 // like []T where T is a struct, are undefined because Equal does not
 // recurse into the slice value when this flag is enabled.
 func IgnoreSliceOrder(b bool) Opt {
-	return func(differ Differ) Differ {
+	return func(differ *Differ) error {
 		differ.ignoreSliceOrder = b
-		return differ
+		return nil
 	}
 }
