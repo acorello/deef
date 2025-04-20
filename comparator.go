@@ -12,7 +12,7 @@ var (
 	// ErrMaxRecursion is logged when MaxDepth is reached.
 	ErrMaxRecursion = errors.New("recursed to MaxDepth")
 
-	// ErrTypeMismatch is logged when Equal passed two different types of values.
+	// ErrTypeMismatch is logged when requested to compare different types.
 	ErrTypeMismatch = errors.New("variables are different reflect.Type")
 
 	// ErrNotHandled is logged when a primitive Go kind is not handled.
@@ -21,14 +21,16 @@ var (
 
 var errorType = reflect.TypeOf((*error)(nil)).Elem()
 
-type cmp struct {
-	Differ
+// rename to reflect role of Comparison struct
+type config = Comparison
+type comparator struct {
+	config
 	diff        []string
 	buff        []string
 	floatFormat string
 }
 
-func (c *cmp) delta(a any, b any) Delta {
+func (c *comparator) delta(a any, b any) Delta {
 	if a == nil && b == nil {
 		return nil
 	} else if a == nil {
@@ -42,11 +44,11 @@ func (c *cmp) delta(a any, b any) Delta {
 
 	aVal := reflect.ValueOf(a)
 	bVal := reflect.ValueOf(b)
-	c.delta_(aVal, bVal, 0)
+	c.compare(aVal, bVal, 0)
 	return c.diff
 }
 
-func (c *cmp) delta_(a, b reflect.Value, level uint) {
+func (c *comparator) compare(a, b reflect.Value, level uint) {
 	if c.maxDepth > 0 && level > c.maxDepth {
 		c.logError(ErrMaxRecursion)
 		return
@@ -91,7 +93,7 @@ func (c *cmp) delta_(a, b reflect.Value, level uint) {
 	bElem := bKind == reflect.Ptr || bKind == reflect.Interface
 
 	// If both types implement the error interface, compare the error strings.
-	// This must be done before dereferencing because errors.New() returns a
+	// This must be done before dereferencing because errors.NewComparison() returns a
 	// pointer to a struct that implements the interface:
 	//   func (e *errorString) Error() string {
 	// And we check CanInterface as a hack to make sure the underlying method
@@ -124,7 +126,7 @@ func (c *cmp) delta_(a, b reflect.Value, level uint) {
 		if bElem && c.nilPointersAreZero && !b.IsValid() && a.IsValid() {
 			b = reflect.Zero(a.Type())
 		}
-		c.delta_(a, b, level+1)
+		c.compare(a, b, level+1)
 		return
 	}
 
@@ -185,7 +187,7 @@ func (c *cmp) delta_(a, b reflect.Value, level uint) {
 			bf := b.Field(i)
 
 			// Recurse to compare the field values
-			c.delta_(af, bf, level+1)
+			c.compare(af, bf, level+1)
 
 			c.pop() // pop field name from buff
 
@@ -238,7 +240,7 @@ func (c *cmp) delta_(a, b reflect.Value, level uint) {
 			aVal := a.MapIndex(key)
 			bVal := b.MapIndex(key)
 			if bVal.IsValid() {
-				c.delta_(aVal, bVal, level+1)
+				c.compare(aVal, bVal, level+1)
 			} else {
 				c.saveDiff(aVal, "<does not have key>")
 			}
@@ -266,7 +268,7 @@ func (c *cmp) delta_(a, b reflect.Value, level uint) {
 		n := a.Len()
 		for i := 0; i < n; i++ {
 			c.push(fmt.Sprintf("array[%d]", i))
-			c.delta_(a.Index(i), b.Index(i), level+1)
+			c.compare(a.Index(i), b.Index(i), level+1)
 			c.pop()
 			if c.isAtMaxDiff() {
 				break
@@ -329,7 +331,7 @@ func (c *cmp) delta_(a, b reflect.Value, level uint) {
 			for i := 0; i < n; i++ {
 				c.push(fmt.Sprintf("slice[%d]", i))
 				if i < aLen && i < bLen {
-					c.delta_(a.Index(i), b.Index(i), level+1)
+					c.compare(a.Index(i), b.Index(i), level+1)
 				} else if i < aLen {
 					c.saveDiff(a.Index(i), "<no value>")
 				} else {
@@ -393,25 +395,25 @@ func (c *cmp) delta_(a, b reflect.Value, level uint) {
 	}
 }
 
-func (c *cmp) isAtMaxDiff() bool {
+func (c *comparator) isAtMaxDiff() bool {
 	return uint(len(c.diff)) >= c.MaxDiff()
 }
 
-func (c *cmp) MaxDiff() uint {
-	return c.Differ.maxDiff
+func (c *comparator) MaxDiff() uint {
+	return c.config.maxDiff
 }
 
-func (c *cmp) push(name string) {
+func (c *comparator) push(name string) {
 	c.buff = append(c.buff, name)
 }
 
-func (c *cmp) pop() {
+func (c *comparator) pop() {
 	if len(c.buff) > 0 {
 		c.buff = c.buff[0 : len(c.buff)-1]
 	}
 }
 
-func (c *cmp) saveDiff(aval, bval any) {
+func (c *comparator) saveDiff(aval, bval any) {
 	if len(c.buff) > 0 {
 		varName := strings.Join(c.buff, ".")
 		c.diff = append(c.diff, fmt.Sprintf("%s: %v != %v", varName, aval, bval))
@@ -420,7 +422,7 @@ func (c *cmp) saveDiff(aval, bval any) {
 	}
 }
 
-func (c *cmp) cmpMapValueCounts(a, b reflect.Value, am, bm map[any]int, a2b bool) {
+func (c *comparator) cmpMapValueCounts(a, b reflect.Value, am, bm map[any]int, a2b bool) {
 	for v := range am {
 		aCount, _ := am[v]
 		bCount, _ := bm[v]
@@ -439,7 +441,7 @@ func (c *cmp) cmpMapValueCounts(a, b reflect.Value, am, bm map[any]int, a2b bool
 	}
 }
 
-func (c *cmp) logError(err error) {
+func (c *comparator) logError(err error) {
 	if c.logErrors {
 		log.Println(err)
 	}

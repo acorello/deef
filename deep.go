@@ -1,4 +1,4 @@
-// Package deep provides function deep.Equal which is like reflect.DeepEqual but
+// Package deep provides function deep.Delta which is like reflect.DeepEqual but
 // returns a list of differences. This is helpful when comparing complex types
 // like structures and maps.
 package deep
@@ -8,7 +8,7 @@ import (
 	"slices"
 )
 
-type Differ struct {
+type Comparison struct {
 	compareFunctions        bool
 	compareUnexportedFields bool
 	floatPrecision          uint
@@ -21,51 +21,54 @@ type Differ struct {
 	nilSlicesAreEmpty       bool
 }
 
-func New() (d Differ) {
-	d, err := NewDiffer()
+func NewComparison() (c Comparison) {
+	c, err := NewComparisonWith(noOpt())
 	if err != nil {
 		panic(fmt.Errorf("factory method with default params failed: %w", err))
 	}
-	return d
+	return c
 }
 
-func NewDiffer(opts ...Opt) (d Differ, err error) {
-	d = Differ{
+func NewComparisonWith(opt Option, opts ...Option) (c Comparison, err error) {
+	c = Comparison{
 		// options where zero-value equals default value are omitted
 		floatPrecision: 10,
 		maxDiff:        10,
 	}
+	if err = opt(&c); err != nil {
+		return c, err
+	}
 	for opt := range slices.Values(opts) {
-		err = opt(&d)
+		err = opt(&c)
 		if err != nil {
 			break
 		}
 	}
-	return d, err
+	return c, err
 }
 
-// Equal compares variables a and b, recursing into their structure up to
+// Delta compares variables a and b, recursing into their structure up to
 // MaxDepth levels deep (if greater than zero), and returns a list of differences,
 // or nil if there are none. Some differences may not be found if an error is
 // also returned.
 //
-// If a type has an Equal method, like time.Equal, it is called to check for
+// If a type has an Delta method, like time.Delta, it is called to check for
 // equality.
 //
 // When comparing a struct, if a field has the tag `deep:"-"` then it will be
 // ignored.
-func (d Differ) Equal(a, b any) Delta {
-	c := cmp{
-		Differ:      d,
+func (c Comparison) Delta(a, b any) Delta {
+	cmp := comparator{
+		config:      c,
 		diff:        []string{},
 		buff:        []string{},
-		floatFormat: fmt.Sprintf("%%.%df", d.floatPrecision),
+		floatFormat: fmt.Sprintf("%%.%df", c.floatPrecision),
 	}
-	return c.delta(a, b)
+	return cmp.delta(a, b)
 }
 
-func (d Differ) With(opts ...Opt) (r Differ, err error) {
-	r = d
+func (c Comparison) With(opts ...Option) (r Comparison, err error) {
+	r = c
 	for opt := range slices.Values(opts) {
 		err = opt(&r)
 		if err != nil {
@@ -93,20 +96,26 @@ func (d Delta) IsEmpty() bool {
 	return len(d) == 0
 }
 
-type Opt func(*Differ) error
+type Option func(*Comparison) error
+
+func noOpt() Option {
+	return func(*Comparison) error {
+		return nil
+	}
+}
 
 // FloatPrecision is the number of decimal places to round float values
 // to when comparing.
-func FloatPrecision(p uint) Opt {
-	return func(d *Differ) error {
+func FloatPrecision(p uint) Option {
+	return func(d *Comparison) error {
 		d.floatPrecision = p
 		return nil
 	}
 }
 
 // MaxDiff specifies the maximum number of differences to return.
-func MaxDiff(m int) Opt {
-	return func(d *Differ) error {
+func MaxDiff(m int) Option {
+	return func(d *Comparison) error {
 		d.maxDiff = uint(m)
 		return nil
 	}
@@ -114,16 +123,16 @@ func MaxDiff(m int) Opt {
 
 // MaxDepth specifies the maximum levels of a struct to recurse into,
 // if greater than zero. If zero, there is no limit.
-func MaxDepth(m uint) Opt {
-	return func(d *Differ) error {
-		d.maxDepth = m
+func MaxDepth(m uint) Option {
+	return func(c *Comparison) error {
+		c.maxDepth = m
 		return nil
 	}
 }
 
 // LogErrors causes errors to be logged to STDERR when true.
-func LogErrors(b bool) Opt {
-	return func(differ *Differ) error {
+func LogErrors(b bool) Option {
+	return func(differ *Comparison) error {
 		differ.logErrors = b
 		return nil
 	}
@@ -133,8 +142,8 @@ func LogErrors(b bool) Opt {
 // T{s int}, to be compared when true. This does not work for comparing
 // error or Time types on unexported fields because methods on unexported
 // fields cannot be called.
-func CompareUnexportedFields(b bool) Opt {
-	return func(differ *Differ) error {
+func CompareUnexportedFields(b bool) Option {
+	return func(differ *Comparison) error {
 		differ.compareUnexportedFields = b
 		return nil
 	}
@@ -144,44 +153,44 @@ func CompareUnexportedFields(b bool) Opt {
 // only two nil functions are equal. Every other combination is not equal.
 // This is disabled by default because previous versions of this package
 // ignored functions. Enabling it can possibly report new diffs.
-func CompareFunctions(b bool) Opt {
-	return func(differ *Differ) error {
+func CompareFunctions(b bool) Option {
+	return func(differ *Comparison) error {
 		differ.compareFunctions = b
 		return nil
 	}
 }
 
 // NilSlicesAreEmpty causes a nil slice to be equal to an empty slice.
-func NilSlicesAreEmpty(b bool) Opt {
-	return func(differ *Differ) error {
+func NilSlicesAreEmpty(b bool) Option {
+	return func(differ *Comparison) error {
 		differ.nilSlicesAreEmpty = b
 		return nil
 	}
 }
 
 // NilMapsAreEmpty causes a nil map to be equal to an empty map.
-func NilMapsAreEmpty(b bool) Opt {
-	return func(differ *Differ) error {
+func NilMapsAreEmpty(b bool) Option {
+	return func(differ *Comparison) error {
 		differ.nilMapsAreEmpty = b
 		return nil
 	}
 }
 
 // NilPointersAreZero causes a nil pointer to be equal to a zero value.
-func NilPointersAreZero(b bool) Opt {
-	return func(differ *Differ) error {
+func NilPointersAreZero(b bool) Option {
+	return func(differ *Comparison) error {
 		differ.nilPointersAreZero = b
 		return nil
 	}
 }
 
-// IgnoreSliceOrder causes Equal to ignore slice order so that
+// IgnoreSliceOrder causes Delta to ignore slice order so that
 // []int{1, 2} and []int{2, 1} are equal. Only slices of primitive scalars
 // like numbers and strings are supported. Slices of complex types,
-// like []T where T is a struct, are undefined because Equal does not
+// like []T where T is a struct, are undefined because Delta does not
 // recurse into the slice value when this flag is enabled.
-func IgnoreSliceOrder(b bool) Opt {
-	return func(differ *Differ) error {
+func IgnoreSliceOrder(b bool) Option {
+	return func(differ *Comparison) error {
 		differ.ignoreSliceOrder = b
 		return nil
 	}
