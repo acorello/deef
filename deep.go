@@ -44,24 +44,6 @@ func NewDiffer(opts ...Opt) (d Differ, err error) {
 	return d, err
 }
 
-type Delta []string
-
-func (d Delta) Equal(other Delta) bool {
-	if len(d) != len(other) {
-		return false
-	}
-	for i := range d {
-		if d[i] != other[i] {
-			return false
-		}
-	}
-	return true
-}
-
-func (d Delta) IsEmpty() bool {
-	return len(d) == 0
-}
-
 // Equal compares variables a and b, recursing into their structure up to
 // MaxDepth levels deep (if greater than zero), and returns a list of differences,
 // or nil if there are none. Some differences may not be found if an error is
@@ -91,6 +73,24 @@ func (d Differ) With(opts ...Opt) (r Differ, err error) {
 		}
 	}
 	return r, err
+}
+
+type Delta []string
+
+func (d Delta) Equal(other Delta) bool {
+	if len(d) != len(other) {
+		return false
+	}
+	for i := range d {
+		if d[i] != other[i] {
+			return false
+		}
+	}
+	return true
+}
+
+func (d Delta) IsEmpty() bool {
+	return len(d) == 0
 }
 
 type Opt func(*Differ) error
