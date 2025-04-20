@@ -14,6 +14,19 @@ import (
 	v2 "github.com/acorello/deep/test/v2"
 )
 
+func Expec(t *testing.T, d deep.Delta, wantedMessages string) {
+	t.Helper()
+	if d.IsEmpty() {
+		t.Fatal("no diff")
+	}
+	if len(d) != 1 {
+		t.Error("too many diff:", wantedMessages)
+	}
+	if d[0] != wantedMessages {
+		t.Error("wrong diff:", d[0])
+	}
+}
+
 func TestString(t *testing.T) {
 	d := deep.New()
 	diff := d.Equal("foo", "foo")
@@ -22,15 +35,7 @@ func TestString(t *testing.T) {
 	}
 
 	diff = d.Equal("foo", "bar")
-	if diff.IsEmpty() {
-		t.Fatal("no diff")
-	}
-	if len(diff) != 1 {
-		t.Error("too many diff:", diff)
-	}
-	if diff[0] != "foo != bar" {
-		t.Error("wrong diff:", diff[0])
-	}
+	Expec(t, diff, "foo != bar")
 }
 
 func TestFloat(t *testing.T) {
@@ -55,15 +60,7 @@ func TestFloat(t *testing.T) {
 	}
 
 	diff = dFP6.Equal(1.123456, 1.123457)
-	if diff.IsEmpty() {
-		t.Fatal("no diff")
-	}
-	if len(diff) != 1 {
-		t.Error("too many diff:", diff)
-	}
-	if diff[0] != "1.123456 != 1.123457" {
-		t.Error("wrong diff:", diff[0])
-	}
+	Expec(t, diff, "1.123456 != 1.123457")
 
 }
 
@@ -75,15 +72,7 @@ func TestInt(t *testing.T) {
 	}
 
 	diff = d.Equal(1, 2)
-	if diff.IsEmpty() {
-		t.Fatal("no diff")
-	}
-	if len(diff) != 1 {
-		t.Error("too many diff:", diff)
-	}
-	if diff[0] != ("1 != 2") {
-		t.Error("wrong diff:", diff[0])
-	}
+	Expec(t, diff, "1 != 2")
 }
 
 func TestUint(t *testing.T) {
@@ -94,15 +83,7 @@ func TestUint(t *testing.T) {
 	}
 
 	diff = d.Equal(uint(2), uint(3))
-	if diff.IsEmpty() {
-		t.Fatal("no diff")
-	}
-	if len(diff) != 1 {
-		t.Error("too many diff:", diff)
-	}
-	if diff[0] != "2 != 3" {
-		t.Error("wrong diff:", diff[0])
-	}
+	Expec(t, diff, "2 != 3")
 }
 
 func TestBool(t *testing.T) {
@@ -118,15 +99,7 @@ func TestBool(t *testing.T) {
 	}
 
 	diff = d.Equal(true, false)
-	if diff.IsEmpty() {
-		t.Fatal("no diff")
-	}
-	if len(diff) != 1 {
-		t.Error("too many diff:", diff)
-	}
-	if diff[0] != "true != false" { // unless you're fipar
-		t.Error("wrong diff:", diff[0])
-	}
+	Expec(t, diff, "true != false")
 }
 
 func TestTypeMismatch(t *testing.T) {
@@ -136,30 +109,14 @@ func TestTypeMismatch(t *testing.T) {
 	var t2 T2 = 1
 	d := deep.New()
 	diff := d.Equal(t1, t2)
-	if diff.IsEmpty() {
-		t.Fatal("no diff")
-	}
-	if len(diff) != 1 {
-		t.Error("too many diff:", diff)
-	}
-	if diff[0] != "deep_test.T1 != deep_test.T2" {
-		t.Error("wrong diff:", diff[0])
-	}
+	Expec(t, diff, "deep_test.T1 != deep_test.T2")
 
 	// Same pkg name but differnet full paths
 	// https://github.com/go-test/deep/issues/39
 	err1 := v1.Error{}
 	err2 := v2.Error{}
 	diff = d.Equal(err1, err2)
-	if diff.IsEmpty() {
-		t.Fatal("no diff")
-	}
-	if len(diff) != 1 {
-		t.Error("too many diff:", diff)
-	}
-	if diff[0] != "github.com/acorello/deep/test/v1.Error != github.com/acorello/deep/test/v2.Error" {
-		t.Error("wrong diff:", diff[0])
-	}
+	Expec(t, diff, "github.com/acorello/deep/test/v1.Error != github.com/acorello/deep/test/v2.Error")
 }
 
 func TestKindMismatch(t *testing.T) {
@@ -170,15 +127,7 @@ func TestKindMismatch(t *testing.T) {
 		t.Fatal("error constructing differ:", err)
 	}
 	diff := d.Equal(x, y)
-	if diff.IsEmpty() {
-		t.Fatal("no diff")
-	}
-	if len(diff) != 1 {
-		t.Error("too many diff:", diff)
-	}
-	if diff[0] != "int != float64" {
-		t.Error("wrong diff:", diff[0])
-	}
+	Expec(t, diff, "int != float64")
 }
 
 func TestDeepRecursion(t *testing.T) {
@@ -224,15 +173,7 @@ func TestDeepRecursion(t *testing.T) {
 		t.Fatal("error constructing differ:", err)
 	}
 	diff = dMaxDepth4.Equal(foo, bar)
-	if diff.IsEmpty() {
-		t.Fatal("no diff")
-	}
-	if len(diff) != 1 {
-		t.Error("too many diff:", diff)
-	}
-	if diff[0] != "map[foo].S.S.S: 42 != 100" {
-		t.Error("wrong diff:", diff[0])
-	}
+	Expec(t, diff, "map[foo].S.S.S: 42 != 100")
 }
 
 func TestMaxDiff(t *testing.T) {
@@ -357,15 +298,7 @@ func TestStruct(t *testing.T) {
 
 	sb.Name = "bar"
 	diff = d.Equal(sa, sb)
-	if diff.IsEmpty() {
-		t.Fatal("no diff")
-	}
-	if len(diff) != 1 {
-		t.Error("too many diff:", diff)
-	}
-	if diff[0] != "Name: foo != bar" {
-		t.Error("wrong diff:", diff[0])
-	}
+	Expec(t, diff, "Name: foo != bar")
 
 	sb.Number = 22
 	diff = d.Equal(sa, sb)
@@ -545,15 +478,7 @@ func TestNestedStruct(t *testing.T) {
 
 	sb.Alias.Nickname = "Bobby"
 	diff = d.Equal(sa, sb)
-	if diff.IsEmpty() {
-		t.Fatal("no diff")
-	}
-	if len(diff) != 1 {
-		t.Error("too many diff:", diff)
-	}
-	if diff[0] != "Alias.Nickname: Bob != Bobby" {
-		t.Error("wrong diff:", diff[0])
-	}
+	Expec(t, diff, "Alias.Nickname: Bob != Bobby")
 }
 
 func TestMap(t *testing.T) {
@@ -578,38 +503,14 @@ func TestMap(t *testing.T) {
 
 	mb["foo"] = 111
 	diff = d.Equal(ma, mb)
-	if diff.IsEmpty() {
-		t.Fatal("no diff")
-	}
-	if len(diff) != 1 {
-		t.Error("too many diff:", diff)
-	}
-	if diff[0] != "map[foo]: 1 != 111" {
-		t.Error("wrong diff:", diff[0])
-	}
+	Expec(t, diff, "map[foo]: 1 != 111")
 
 	delete(mb, "foo")
 	diff = d.Equal(ma, mb)
-	if diff.IsEmpty() {
-		t.Fatal("no diff")
-	}
-	if len(diff) != 1 {
-		t.Error("too many diff:", diff)
-	}
-	if diff[0] != "map[foo]: 1 != <does not have key>" {
-		t.Error("wrong diff:", diff[0])
-	}
+	Expec(t, diff, "map[foo]: 1 != <does not have key>")
 
 	diff = d.Equal(mb, ma)
-	if diff.IsEmpty() {
-		t.Fatal("no diff")
-	}
-	if len(diff) != 1 {
-		t.Error("too many diff:", diff)
-	}
-	if diff[0] != "map[foo]: <does not have key> != 1" {
-		t.Error("wrong diff:", diff[0])
-	}
+	Expec(t, diff, "map[foo]: <does not have key> != 1")
 
 	var mc map[string]int
 	diff = d.Equal(ma, mc)
@@ -653,39 +554,15 @@ func TestArray(t *testing.T) {
 
 	b[2] = 333
 	diff = differ.Equal(a, b)
-	if diff.IsEmpty() {
-		t.Fatal("no diff")
-	}
-	if len(diff) != 1 {
-		t.Error("too many diff:", diff)
-	}
-	if diff[0] != "array[2]: 3 != 333" {
-		t.Error("wrong diff:", diff[0])
-	}
+	Expec(t, diff, "array[2]: 3 != 333")
 
 	c := [3]int{1, 2, 2}
 	diff = differ.Equal(a, c)
-	if diff.IsEmpty() {
-		t.Fatal("no diff")
-	}
-	if len(diff) != 1 {
-		t.Error("too many diff:", diff)
-	}
-	if diff[0] != "array[2]: 3 != 2" {
-		t.Error("wrong diff:", diff[0])
-	}
+	Expec(t, diff, "array[2]: 3 != 2")
 
 	var d [2]int
 	diff = differ.Equal(a, d)
-	if diff.IsEmpty() {
-		t.Fatal("no diff")
-	}
-	if len(diff) != 1 {
-		t.Error("too many diff:", diff)
-	}
-	if diff[0] != "[3]int != [2]int" {
-		t.Error("wrong diff:", diff[0])
-	}
+	Expec(t, diff, "[3]int != [2]int")
 
 	e := [12]int{}
 	f := [12]int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
@@ -721,61 +598,21 @@ func TestSlice(t *testing.T) {
 
 	b[2] = 333
 	diff = d.Equal(a, b)
-	if diff.IsEmpty() {
-		t.Fatal("no diff")
-	}
-	if len(diff) != 1 {
-		t.Error("too many diff:", diff)
-	}
-	if diff[0] != "slice[2]: 3 != 333" {
-		t.Error("wrong diff:", diff[0])
-	}
+	Expec(t, diff, "slice[2]: 3 != 333")
 
 	b = b[0:2]
 	diff = d.Equal(a, b)
-	if diff.IsEmpty() {
-		t.Fatal("no diff")
-	}
-	if len(diff) != 1 {
-		t.Error("too many diff:", diff)
-	}
-	if diff[0] != "slice[2]: 3 != <no value>" {
-		t.Error("wrong diff:", diff[0])
-	}
+	Expec(t, diff, "slice[2]: 3 != <no value>")
 
 	diff = d.Equal(b, a)
-	if diff.IsEmpty() {
-		t.Fatal("no diff")
-	}
-	if len(diff) != 1 {
-		t.Error("too many diff:", diff)
-	}
-	if diff[0] != "slice[2]: <no value> != 3" {
-		t.Error("wrong diff:", diff[0])
-	}
+	Expec(t, diff, "slice[2]: <no value> != 3")
 
 	var c []int
 	diff = d.Equal(a, c)
-	if diff.IsEmpty() {
-		t.Fatal("no diff")
-	}
-	if len(diff) != 1 {
-		t.Error("too many diff:", diff)
-	}
-	if diff[0] != "[1 2 3] != <nil slice>" {
-		t.Error("wrong diff:", diff[0])
-	}
+	Expec(t, diff, "[1 2 3] != <nil slice>")
 
 	diff = d.Equal(c, a)
-	if diff.IsEmpty() {
-		t.Fatal("no diff")
-	}
-	if len(diff) != 1 {
-		t.Error("too many diff:", diff)
-	}
-	if diff[0] != "<nil slice> != [1 2 3]" {
-		t.Error("wrong diff:", diff[0])
-	}
+	Expec(t, diff, "<nil slice> != [1 2 3]")
 }
 
 func TestSiblingSlices(t *testing.T) {
@@ -796,29 +633,13 @@ func TestSiblingSlices(t *testing.T) {
 	a = father[0:3]
 	b = father[0:2]
 	diff = d.Equal(a, b)
-	if diff.IsEmpty() {
-		t.Fatal("no diff")
-	}
-	if len(diff) != 1 {
-		t.Error("too many diff:", diff)
-	}
-	if diff[0] != "slice[2]: 3 != <no value>" {
-		t.Error("wrong diff:", diff[0])
-	}
+	Expec(t, diff, "slice[2]: 3 != <no value>")
 
 	a = father[0:2]
 	b = father[0:3]
 
 	diff = d.Equal(a, b)
-	if diff.IsEmpty() {
-		t.Fatal("no diff")
-	}
-	if len(diff) != 1 {
-		t.Error("too many diff:", diff)
-	}
-	if diff[0] != "slice[2]: <no value> != 3" {
-		t.Error("wrong diff:", diff[0])
-	}
+	Expec(t, diff, "slice[2]: <no value> != 3")
 
 	a = father[0:2]
 	b = father[2:4]
@@ -858,51 +679,19 @@ func TestEmptySlice(t *testing.T) {
 	// Non-empty is not equal to empty.
 	d := deep.New()
 	diff := d.Equal(a, b)
-	if diff.IsEmpty() {
-		t.Fatal("no diff")
-	}
-	if len(diff) != 1 {
-		t.Error("too many diff:", diff)
-	}
-	if diff[0] != "slice[0]: 1 != <no value>" {
-		t.Error("wrong diff:", diff[0])
-	}
+	Expec(t, diff, "slice[0]: 1 != <no value>")
 
 	// Empty is not equal to non-empty.
 	diff = d.Equal(b, a)
-	if diff.IsEmpty() {
-		t.Fatal("no diff")
-	}
-	if len(diff) != 1 {
-		t.Error("too many diff:", diff)
-	}
-	if diff[0] != "slice[0]: <no value> != 1" {
-		t.Error("wrong diff:", diff[0])
-	}
+	Expec(t, diff, "slice[0]: <no value> != 1")
 
 	// Empty is not equal to nil.
 	diff = d.Equal(b, c)
-	if diff.IsEmpty() {
-		t.Fatal("no diff")
-	}
-	if len(diff) != 1 {
-		t.Error("too many diff:", diff)
-	}
-	if diff[0] != "[] != <nil slice>" {
-		t.Error("wrong diff:", diff[0])
-	}
+	Expec(t, diff, "[] != <nil slice>")
 
 	// Nil is not equal to empty.
 	diff = d.Equal(c, b)
-	if diff.IsEmpty() {
-		t.Fatal("no diff")
-	}
-	if len(diff) != 1 {
-		t.Error("too many diff:", diff)
-	}
-	if diff[0] != "<nil slice> != []" {
-		t.Error("wrong diff:", diff[0])
-	}
+	Expec(t, diff, "<nil slice> != []")
 }
 
 func TestNilSlicesAreEmpty(t *testing.T) {
@@ -929,51 +718,19 @@ func TestNilSlicesAreEmpty(t *testing.T) {
 
 	// Non-empty is not equal to nil.
 	diff = d.Equal(a, c)
-	if diff.IsEmpty() {
-		t.Fatal("no diff")
-	}
-	if len(diff) != 1 {
-		t.Error("too many diff:", diff)
-	}
-	if diff[0] != "[1] != <nil slice>" {
-		t.Error("wrong diff:", diff[0])
-	}
+	Expec(t, diff, "[1] != <nil slice>")
 
 	// Nil is not equal to non-empty.
 	diff = d.Equal(c, a)
-	if diff.IsEmpty() {
-		t.Fatal("no diff")
-	}
-	if len(diff) != 1 {
-		t.Error("too many diff:", diff)
-	}
-	if diff[0] != "<nil slice> != [1]" {
-		t.Error("wrong diff:", diff[0])
-	}
+	Expec(t, diff, "<nil slice> != [1]")
 
 	// Non-empty is not equal to empty.
 	diff = d.Equal(a, b)
-	if diff.IsEmpty() {
-		t.Fatal("no diff")
-	}
-	if len(diff) != 1 {
-		t.Error("too many diff:", diff)
-	}
-	if diff[0] != "slice[0]: 1 != <no value>" {
-		t.Error("wrong diff:", diff[0])
-	}
+	Expec(t, diff, "slice[0]: 1 != <no value>")
 
 	// Empty is not equal to non-empty.
 	diff = d.Equal(b, a)
-	if diff.IsEmpty() {
-		t.Fatal("no diff")
-	}
-	if len(diff) != 1 {
-		t.Error("too many diff:", diff)
-	}
-	if diff[0] != "slice[0]: <no value> != 1" {
-		t.Error("wrong diff:", diff[0])
-	}
+	Expec(t, diff, "slice[0]: <no value> != 1")
 }
 
 func TestNilMapsAreEmpty(t *testing.T) {
@@ -1000,51 +757,19 @@ func TestNilMapsAreEmpty(t *testing.T) {
 
 	// Non-empty is not equal to nil.
 	diff = d.Equal(a, c)
-	if diff.IsEmpty() {
-		t.Fatal("no diff")
-	}
-	if len(diff) != 1 {
-		t.Error("too many diff:", diff)
-	}
-	if diff[0] != "map[1:1] != <nil map>" {
-		t.Error("wrong diff:", diff[0])
-	}
+	Expec(t, diff, "map[1:1] != <nil map>")
 
 	// Nil is not equal to non-empty.
 	diff = d.Equal(c, a)
-	if diff.IsEmpty() {
-		t.Fatal("no diff")
-	}
-	if len(diff) != 1 {
-		t.Error("too many diff:", diff)
-	}
-	if diff[0] != "<nil map> != map[1:1]" {
-		t.Error("wrong diff:", diff[0])
-	}
+	Expec(t, diff, "<nil map> != map[1:1]")
 
 	// Non-empty is not equal to empty.
 	diff = d.Equal(a, b)
-	if diff.IsEmpty() {
-		t.Fatal("no diff")
-	}
-	if len(diff) != 1 {
-		t.Error("too many diff:", diff)
-	}
-	if diff[0] != "map[1]: 1 != <does not have key>" {
-		t.Error("wrong diff:", diff[0])
-	}
+	Expec(t, diff, "map[1]: 1 != <does not have key>")
 
 	// Empty is not equal to non-empty.
 	diff = d.Equal(b, a)
-	if diff.IsEmpty() {
-		t.Fatal("no diff")
-	}
-	if len(diff) != 1 {
-		t.Error("too many diff:", diff)
-	}
-	if diff[0] != "map[1]: <does not have key> != 1" {
-		t.Error("wrong diff:", diff[0])
-	}
+	Expec(t, diff, "map[1]: <does not have key> != 1")
 }
 
 func TestNilInterface(t *testing.T) {
@@ -1053,26 +778,10 @@ func TestNilInterface(t *testing.T) {
 	a := &T{i: 1}
 	d := deep.New()
 	diff := d.Equal(nil, a)
-	if diff.IsEmpty() {
-		t.Fatal("no diff")
-	}
-	if len(diff) != 1 {
-		t.Error("too many diff:", diff)
-	}
-	if diff[0] != "<nil pointer> != &{1}" {
-		t.Error("wrong diff:", diff[0])
-	}
+	Expec(t, diff, "<nil pointer> != &{1}")
 
 	diff = d.Equal(a, nil)
-	if diff.IsEmpty() {
-		t.Fatal("no diff")
-	}
-	if len(diff) != 1 {
-		t.Error("too many diff:", diff)
-	}
-	if diff[0] != "&{1} != <nil pointer>" {
-		t.Error("wrong diff:", diff[0])
-	}
+	Expec(t, diff, "&{1} != <nil pointer>")
 
 	diff = d.Equal(nil, nil)
 	if len(diff) > 0 {
@@ -1092,27 +801,11 @@ func TestPointer(t *testing.T) {
 
 	a, b = nil, &T{}
 	diff = d.Equal(a, b)
-	if diff.IsEmpty() {
-		t.Fatal("no diff")
-	}
-	if len(diff) != 1 {
-		t.Error("too many diff:", diff)
-	}
-	if diff[0] != "<nil pointer> != deep_test.T" {
-		t.Error("wrong diff:", diff[0])
-	}
+	Expec(t, diff, "<nil pointer> != deep_test.T")
 
 	a, b = &T{}, nil
 	diff = d.Equal(a, b)
-	if diff.IsEmpty() {
-		t.Fatal("no diff")
-	}
-	if len(diff) != 1 {
-		t.Error("too many diff:", diff)
-	}
-	if diff[0] != "deep_test.T != <nil pointer>" {
-		t.Error("wrong diff:", diff[0])
-	}
+	Expec(t, diff, "deep_test.T != <nil pointer>")
 
 	a, b = nil, nil
 	diff = d.Equal(a, b)
