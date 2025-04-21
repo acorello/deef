@@ -1,7 +1,7 @@
-// Package deep provides function deep.Diff which is like reflect.DeepEqual but
+// Package deef provides function deef.Diff which is like reflect.DeepEqual but
 // returns a list of differences. This is helpful when comparing complex types
 // like structures and maps.
-package deep
+package deef
 
 import (
 	"fmt"
@@ -49,8 +49,7 @@ func NewComparisonWith(opts ...Option) (c Comparison, err error) {
 //
 // If any type encountered has an `Equal` method it is used to determine equality.
 //
-// When comparing a struct, if a field has the tag `deep:"-"` (TODO: rename tag)
-// then it will be ignored.
+// When comparing a struct, if a field has the tag `deef:"-"` then it will be ignored.
 //
 // Some differences may not be found if an error is also returned.
 func (c Comparison) Compare(a, b any) Diff {

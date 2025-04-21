@@ -1,4 +1,4 @@
-package deeptest
+package test
 
 type Error struct{}
 

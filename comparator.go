@@ -1,4 +1,4 @@
-package deep
+package deef
 
 import (
 	"errors"
@@ -176,7 +176,7 @@ func (c *comparator) compare_(a, b reflect.Value, level uint) {
 				continue // skip unexported field, e.g. s in type T struct {s string}
 			}
 
-			if aType.Field(i).Tag.Get("deep") == "-" {
+			if aType.Field(i).Tag.Get("deef") == "-" {
 				continue // field wants to be ignored
 			}
 
