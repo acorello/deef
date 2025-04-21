@@ -21,7 +21,7 @@ var (
 
 var errorType = reflect.TypeOf((*error)(nil)).Elem()
 
-// rename to reflect role of Comparison struct
+// config is a rename of Comparison to reflect role it plays within comparator
 type config = Comparison
 type comparator struct {
 	config
@@ -30,7 +30,7 @@ type comparator struct {
 	floatFormat string
 }
 
-func (c *comparator) delta(a any, b any) Delta {
+func (c *comparator) compare(a any, b any) Diff {
 	if a == nil && b == nil {
 		return nil
 	} else if a == nil {
@@ -44,11 +44,12 @@ func (c *comparator) delta(a any, b any) Delta {
 
 	aVal := reflect.ValueOf(a)
 	bVal := reflect.ValueOf(b)
-	c.compare(aVal, bVal, 0)
+	c.compare_(aVal, bVal, 0)
 	return c.diff
 }
 
-func (c *comparator) compare(a, b reflect.Value, level uint) {
+// compare_ is the recursive implementation of compare
+func (c *comparator) compare_(a, b reflect.Value, level uint) {
 	if c.maxDepth > 0 && level > c.maxDepth {
 		c.logError(ErrMaxRecursion)
 		return
@@ -126,7 +127,7 @@ func (c *comparator) compare(a, b reflect.Value, level uint) {
 		if bElem && c.nilPointersAreZero && !b.IsValid() && a.IsValid() {
 			b = reflect.Zero(a.Type())
 		}
-		c.compare(a, b, level+1)
+		c.compare_(a, b, level+1)
 		return
 	}
 
@@ -187,7 +188,7 @@ func (c *comparator) compare(a, b reflect.Value, level uint) {
 			bf := b.Field(i)
 
 			// Recurse to compare the field values
-			c.compare(af, bf, level+1)
+			c.compare_(af, bf, level+1)
 
 			c.pop() // pop field name from buff
 
@@ -240,7 +241,7 @@ func (c *comparator) compare(a, b reflect.Value, level uint) {
 			aVal := a.MapIndex(key)
 			bVal := b.MapIndex(key)
 			if bVal.IsValid() {
-				c.compare(aVal, bVal, level+1)
+				c.compare_(aVal, bVal, level+1)
 			} else {
 				c.saveDiff(aVal, "<does not have key>")
 			}
@@ -268,7 +269,7 @@ func (c *comparator) compare(a, b reflect.Value, level uint) {
 		n := a.Len()
 		for i := 0; i < n; i++ {
 			c.push(fmt.Sprintf("array[%d]", i))
-			c.compare(a.Index(i), b.Index(i), level+1)
+			c.compare_(a.Index(i), b.Index(i), level+1)
 			c.pop()
 			if c.isAtMaxDiff() {
 				break
@@ -307,11 +308,12 @@ func (c *comparator) compare(a, b reflect.Value, level uint) {
 
 		if c.ignoreSliceOrder {
 			// Compare slices by value and value count; ignore order.
-			// Value equality is impliclity established by the maps:
+			// Value equality is implicitly established by the maps:
 			// any value v1 will hash to the same map value if it's equal
-			// to another value v2. Then equality is determiend by value
-			// count: presuming v1==v2, then the slics are equal if there
+			// to another value v2. Then equality is determined by value
+			// count: presuming v1==v2, then the slices are equal if there
 			// are equal numbers of v1 in each slice.
+			// TODO: consider using a single map with value struct{ Left, Right int}
 			am := map[any]int{}
 			for i := 0; i < a.Len(); i++ {
 				am[a.Index(i).Interface()] += 1
@@ -331,7 +333,7 @@ func (c *comparator) compare(a, b reflect.Value, level uint) {
 			for i := 0; i < n; i++ {
 				c.push(fmt.Sprintf("slice[%d]", i))
 				if i < aLen && i < bLen {
-					c.compare(a.Index(i), b.Index(i), level+1)
+					c.compare_(a.Index(i), b.Index(i), level+1) // TODO: rename level to depth (to be consistent with option name)
 				} else if i < aLen {
 					c.saveDiff(a.Index(i), "<no value>")
 				} else {
@@ -396,11 +398,7 @@ func (c *comparator) compare(a, b reflect.Value, level uint) {
 }
 
 func (c *comparator) isAtMaxDiff() bool {
-	return uint(len(c.diff)) >= c.MaxDiff()
-}
-
-func (c *comparator) MaxDiff() uint {
-	return c.config.maxDiff
+	return uint(len(c.diff)) >= c.maxDiff
 }
 
 func (c *comparator) push(name string) {

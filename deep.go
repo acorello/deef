@@ -1,4 +1,4 @@
-// Package deep provides function deep.Delta which is like reflect.DeepEqual but
+// Package deep provides function deep.Diff which is like reflect.DeepEqual but
 // returns a list of differences. This is helpful when comparing complex types
 // like structures and maps.
 package deep
@@ -29,14 +29,11 @@ func NewComparison() (c Comparison) {
 	return c
 }
 
-func NewComparisonWith(opt Option, opts ...Option) (c Comparison, err error) {
+func NewComparisonWith(opts ...Option) (c Comparison, err error) {
 	c = Comparison{
 		// options where zero-value equals default value are omitted
 		floatPrecision: 10,
 		maxDiff:        10,
-	}
-	if err = opt(&c); err != nil {
-		return c, err
 	}
 	for opt := range slices.Values(opts) {
 		err = opt(&c)
@@ -47,40 +44,28 @@ func NewComparisonWith(opt Option, opts ...Option) (c Comparison, err error) {
 	return c, err
 }
 
-// Delta compares variables a and b, recursing into their structure up to
-// MaxDepth levels deep (if greater than zero), and returns a list of differences,
-// or nil if there are none. Some differences may not be found if an error is
-// also returned.
+// Compare returns the differences between a and b. If they are compound types it recursively compares each
+// of their members up to configured MaxDepth (default is unlimited).
 //
-// If a type has an Delta method, like time.Delta, it is called to check for
-// equality.
+// If any type encountered has an `Equal` method it is used to determine equality.
 //
-// When comparing a struct, if a field has the tag `deep:"-"` then it will be
-// ignored.
-func (c Comparison) Delta(a, b any) Delta {
+// When comparing a struct, if a field has the tag `deep:"-"` (TODO: rename tag)
+// then it will be ignored.
+//
+// Some differences may not be found if an error is also returned.
+func (c Comparison) Compare(a, b any) Diff {
 	cmp := comparator{
 		config:      c,
 		diff:        []string{},
 		buff:        []string{},
 		floatFormat: fmt.Sprintf("%%.%df", c.floatPrecision),
 	}
-	return cmp.delta(a, b)
+	return cmp.compare(a, b)
 }
 
-func (c Comparison) With(opts ...Option) (r Comparison, err error) {
-	r = c
-	for opt := range slices.Values(opts) {
-		err = opt(&r)
-		if err != nil {
-			break
-		}
-	}
-	return r, err
-}
+type Diff []string
 
-type Delta []string
-
-func (d Delta) Equal(other Delta) bool {
+func (d Diff) Equal(other Diff) bool {
 	if len(d) != len(other) {
 		return false
 	}
@@ -92,7 +77,7 @@ func (d Delta) Equal(other Delta) bool {
 	return true
 }
 
-func (d Delta) IsEmpty() bool {
+func (d Diff) IsEmpty() bool {
 	return len(d) == 0
 }
 
@@ -184,10 +169,10 @@ func NilPointersAreZero(b bool) Option {
 	}
 }
 
-// IgnoreSliceOrder causes Delta to ignore slice order so that
+// IgnoreSliceOrder causes Comparison to ignore slice order so that
 // []int{1, 2} and []int{2, 1} are equal. Only slices of primitive scalars
 // like numbers and strings are supported. Slices of complex types,
-// like []T where T is a struct, are undefined because Delta does not
+// like []T where T is a struct, are undefined because Diff does not
 // recurse into the slice value when this flag is enabled.
 func IgnoreSliceOrder(b bool) Option {
 	return func(differ *Comparison) error {
