@@ -22,7 +22,7 @@ type Comparison struct {
 }
 
 func NewComparison() (c Comparison) {
-	c, err := NewComparisonWith(noOpt())
+	c, err := NewComparisonWith()
 	if err != nil {
 		panic(fmt.Errorf("factory method with default params failed: %w", err))
 	}
@@ -80,13 +80,8 @@ func (d Diff) IsEmpty() bool {
 	return len(d) == 0
 }
 
+// Option changes a Comparison configuration
 type Option func(*Comparison) error
-
-func noOpt() Option {
-	return func(*Comparison) error {
-		return nil
-	}
-}
 
 // FloatPrecision is the number of decimal places to round float values
 // to when comparing.
