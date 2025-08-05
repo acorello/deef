@@ -21,14 +21,14 @@ var (
 
 var errorType = reflect.TypeOf((*error)(nil)).Elem()
 
-type cmp struct {
-	Differ
+type comparator struct {
+	Comparator
 	diff        []string
 	buff        []string
 	floatFormat string
 }
 
-func (c *cmp) delta(a any, b any) Diffs {
+func (c *comparator) delta(a any, b any) Diffs {
 	if a == nil && b == nil {
 		return nil
 	} else if a == nil {
@@ -46,7 +46,7 @@ func (c *cmp) delta(a any, b any) Diffs {
 	return c.diff
 }
 
-func (c *cmp) delta_(a, b reflect.Value, level uint) {
+func (c *comparator) delta_(a, b reflect.Value, level uint) {
 	if c.maxDepth > 0 && level > c.maxDepth {
 		c.logError(ErrMaxRecursion)
 		return
@@ -393,25 +393,25 @@ func (c *cmp) delta_(a, b reflect.Value, level uint) {
 	}
 }
 
-func (c *cmp) isAtMaxDiff() bool {
+func (c *comparator) isAtMaxDiff() bool {
 	return uint(len(c.diff)) >= c.MaxDiff()
 }
 
-func (c *cmp) MaxDiff() uint {
-	return c.Differ.maxDiff
+func (c *comparator) MaxDiff() uint {
+	return c.Comparator.maxDiff
 }
 
-func (c *cmp) push(name string) {
+func (c *comparator) push(name string) {
 	c.buff = append(c.buff, name)
 }
 
-func (c *cmp) pop() {
+func (c *comparator) pop() {
 	if len(c.buff) > 0 {
 		c.buff = c.buff[0 : len(c.buff)-1]
 	}
 }
 
-func (c *cmp) saveDiff(aval, bval any) {
+func (c *comparator) saveDiff(aval, bval any) {
 	if len(c.buff) > 0 {
 		varName := strings.Join(c.buff, ".")
 		c.diff = append(c.diff, fmt.Sprintf("%s: %v != %v", varName, aval, bval))
@@ -420,7 +420,7 @@ func (c *cmp) saveDiff(aval, bval any) {
 	}
 }
 
-func (c *cmp) cmpMapValueCounts(a, b reflect.Value, am, bm map[any]int, a2b bool) {
+func (c *comparator) cmpMapValueCounts(a, b reflect.Value, am, bm map[any]int, a2b bool) {
 	for v := range am {
 		aCount, _ := am[v]
 		bCount, _ := bm[v]
@@ -439,7 +439,7 @@ func (c *cmp) cmpMapValueCounts(a, b reflect.Value, am, bm map[any]int, a2b bool
 	}
 }
 
-func (c *cmp) logError(err error) {
+func (c *comparator) logError(err error) {
 	if c.logErrors {
 		log.Println(err)
 	}

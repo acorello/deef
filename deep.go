@@ -1,4 +1,4 @@
-// Package deep provides Differ.Compare which is like reflect.DeepEqual but
+// Package deep provides Comparator.Compare which is like reflect.DeepEqual but
 // returns a list of differences. This is helpful when comparing complex types
 // like structures and maps.
 package deep
@@ -8,7 +8,7 @@ import (
 	"slices"
 )
 
-type Differ struct {
+type Comparator struct {
 	compareFunctions        bool
 	compareUnexportedFields bool
 	floatPrecision          uint
@@ -21,7 +21,7 @@ type Differ struct {
 	nilSlicesAreEmpty       bool
 }
 
-func NewWithDefaults() (d Differ) {
+func NewWithDefaults() (d Comparator) {
 	d, err := New()
 	if err != nil {
 		panic(fmt.Errorf("factory method with default params failed: %w", err))
@@ -29,8 +29,8 @@ func NewWithDefaults() (d Differ) {
 	return d
 }
 
-func New(opts ...Opt) (d Differ, err error) {
-	d = Differ{
+func New(opts ...Opt) (d Comparator, err error) {
+	d = Comparator{
 		// options where zero-value equals default value are omitted
 		floatPrecision: 10,
 		maxDiff:        10,
@@ -72,9 +72,9 @@ func (d Diffs) IsEmpty() bool {
 //
 // When comparing a struct, if a field has the tag `deep:"-"` then it will be
 // ignored.
-func (d Differ) Compare(a, b any) Diffs {
-	c := cmp{
-		Differ:      d,
+func (d Comparator) Compare(a, b any) Diffs {
+	c := comparator{
+		Comparator:  d,
 		diff:        []string{},
 		buff:        []string{},
 		floatFormat: fmt.Sprintf("%%.%df", d.floatPrecision),
@@ -82,7 +82,7 @@ func (d Differ) Compare(a, b any) Diffs {
 	return c.delta(a, b)
 }
 
-func (d Differ) But(opts ...Opt) (r Differ, err error) {
+func (d Comparator) But(opts ...Opt) (r Comparator, err error) {
 	r = d
 	for opt := range slices.Values(opts) {
 		err = opt(&r)
@@ -93,12 +93,12 @@ func (d Differ) But(opts ...Opt) (r Differ, err error) {
 	return r, err
 }
 
-type Opt func(*Differ) error
+type Opt func(*Comparator) error
 
 // WithFloatPrecision is the number of decimal places to round float values
 // to when comparing.
 func WithFloatPrecision(p uint) Opt {
-	return func(d *Differ) error {
+	return func(d *Comparator) error {
 		d.floatPrecision = p
 		return nil
 	}
@@ -106,7 +106,7 @@ func WithFloatPrecision(p uint) Opt {
 
 // WithMaxDiff specifies the maximum number of differences to return.
 func WithMaxDiff(m int) Opt {
-	return func(d *Differ) error {
+	return func(d *Comparator) error {
 		d.maxDiff = uint(m)
 		return nil
 	}
@@ -115,7 +115,7 @@ func WithMaxDiff(m int) Opt {
 // WithMaxDepth specifies the maximum levels of a struct to recurse into,
 // if greater than zero. If zero, there is no limit.
 func WithMaxDepth(m uint) Opt {
-	return func(d *Differ) error {
+	return func(d *Comparator) error {
 		d.maxDepth = m
 		return nil
 	}
@@ -123,7 +123,7 @@ func WithMaxDepth(m uint) Opt {
 
 // WithLogErrors causes errors to be logged to STDERR when true.
 func WithLogErrors(b bool) Opt {
-	return func(differ *Differ) error {
+	return func(differ *Comparator) error {
 		differ.logErrors = b
 		return nil
 	}
@@ -134,7 +134,7 @@ func WithLogErrors(b bool) Opt {
 // error or Time types on unexported fields because methods on unexported
 // fields cannot be called.
 func WithCompareUnexportedFields(b bool) Opt {
-	return func(differ *Differ) error {
+	return func(differ *Comparator) error {
 		differ.compareUnexportedFields = b
 		return nil
 	}
@@ -145,7 +145,7 @@ func WithCompareUnexportedFields(b bool) Opt {
 // This is disabled by default because previous versions of this package
 // ignored functions. Enabling it can possibly report new diffs.
 func WithCompareFunctions(b bool) Opt {
-	return func(differ *Differ) error {
+	return func(differ *Comparator) error {
 		differ.compareFunctions = b
 		return nil
 	}
@@ -153,7 +153,7 @@ func WithCompareFunctions(b bool) Opt {
 
 // WithNilSlicesAreEmpty causes a nil slice to be equal to an empty slice.
 func WithNilSlicesAreEmpty(b bool) Opt {
-	return func(differ *Differ) error {
+	return func(differ *Comparator) error {
 		differ.nilSlicesAreEmpty = b
 		return nil
 	}
@@ -161,7 +161,7 @@ func WithNilSlicesAreEmpty(b bool) Opt {
 
 // WithNilMapsAreEmpty causes a nil map to be equal to an empty map.
 func WithNilMapsAreEmpty(b bool) Opt {
-	return func(differ *Differ) error {
+	return func(differ *Comparator) error {
 		differ.nilMapsAreEmpty = b
 		return nil
 	}
@@ -169,7 +169,7 @@ func WithNilMapsAreEmpty(b bool) Opt {
 
 // WithNilPointersAreZero causes a nil pointer to be equal to a zero value.
 func WithNilPointersAreZero(b bool) Opt {
-	return func(differ *Differ) error {
+	return func(differ *Comparator) error {
 		differ.nilPointersAreZero = b
 		return nil
 	}
@@ -181,7 +181,7 @@ func WithNilPointersAreZero(b bool) Opt {
 // like []T where T is a struct, are undefined because Compare does not
 // recurse into the slice value when this flag is enabled.
 func WithIgnoreSliceOrder(b bool) Opt {
-	return func(differ *Differ) error {
+	return func(differ *Comparator) error {
 		differ.ignoreSliceOrder = b
 		return nil
 	}
