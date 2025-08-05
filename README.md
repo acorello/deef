@@ -1,4 +1,4 @@
-# Deep Variable Equality for Humans
+# Deep Variable Comparison for Humans
 
 [![Go Report Card](https://goreportcard.com/badge/github.com/go-test/deep)](https://goreportcard.com/report/github.com/go-test/deep)
 [![Coverage Status](https://coveralls.io/repos/github/go-test/deep/badge.svg?branch=master)](https://coveralls.io/github/go-test/deep?branch=master)

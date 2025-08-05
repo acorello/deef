@@ -91,7 +91,7 @@ func (c *cmp) delta_(a, b reflect.Value, level uint) {
 	bElem := bKind == reflect.Ptr || bKind == reflect.Interface
 
 	// If both types implement the error interface, compare the error strings.
-	// This must be done before dereferencing because errors.New() returns a
+	// This must be done before dereferencing because errors.NewWithDefaults() returns a
 	// pointer to a struct that implements the interface:
 	//   func (e *errorString) Error() string {
 	// And we check CanInterface as a hack to make sure the underlying method

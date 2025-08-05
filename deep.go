@@ -21,15 +21,15 @@ type Differ struct {
 	nilSlicesAreEmpty       bool
 }
 
-func New() (d Differ) {
-	d, err := NewDiffer()
+func NewWithDefaults() (d Differ) {
+	d, err := New()
 	if err != nil {
 		panic(fmt.Errorf("factory method with default params failed: %w", err))
 	}
 	return d
 }
 
-func NewDiffer(opts ...Opt) (d Differ, err error) {
+func New(opts ...Opt) (d Differ, err error) {
 	d = Differ{
 		// options where zero-value equals default value are omitted
 		floatPrecision: 10,
