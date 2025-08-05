@@ -1,4 +1,6 @@
-# go-test/deep Changelog
+# Changelog of `go-test/deep`, the precursor of the current package
+
+Preserved for information purposes.
 
 ## v1.1.1 released 2024-06-23
 
@@ -59,6 +61,6 @@
 
 * Fixed issue #12: Arrays are not properly compared (@samlitowitz)
 
-## v1.0.0 releaesd 2017-10-27 
+## v1.0.0 releaesd 2017-10-27
 
 * First release

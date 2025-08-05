@@ -1,24 +1,35 @@
 # Deep Variable Comparison for Humans
 
-[![Go Report Card](https://goreportcard.com/badge/github.com/go-test/deep)](https://goreportcard.com/report/github.com/go-test/deep)
-[![Coverage Status](https://coveralls.io/repos/github/go-test/deep/badge.svg?branch=master)](https://coveralls.io/github/go-test/deep?branch=master)
-[![Go Reference](https://pkg.go.dev/badge/github.com/go-test/deep.svg)](https://pkg.go.dev/github.com/go-test/deep)
+This package is a refactoring of [go-test/deep](https://github.com/go-test/deep). Changes:
 
-This package provides a single function: `deep.Equal`. It's like [reflect.DeepEqual](http://golang.org/pkg/reflect/#DeepEqual) but much friendlier to humans (or any sentient being) for two reason:
+- The config and logic is bound to an object rather than the package. This is to avoid the problems of a global shared
+  configuration.
+- The available options have been transformed into "functional options", you can pass them to the factory function or to
+  the `func (Comparator) But` method, if you want to build an amended one.
+- Renamed `deep.Equal` to `(Comparator)Compare`, because `Equal` is conventionally given to methods returning a boolean.
+  IMO it's also more accurate for what it does.
+- The returned value is of a named type: `Diff`, that simply wraps a `map[string]string` (the original return type) and
+  offer some utility methods like `(Diff) IsEmpty`.
 
-* `deep.Equal` returns a list of differences
-* `deep.Equal` does not compare unexported fields (by default)
+Beside these changes the aim and comparison logic is identical to the original: in fact all tests have been preserved.
 
-`reflect.DeepEqual` is good (like all things Golang!), but it's a game of [Hunt the Wumpus](https://en.wikipedia.org/wiki/Hunt_the_Wumpus). For large maps, slices, and structs, finding the difference is difficult.
+## Note
 
-`deep.Equal` doesn't play games with you, it lists the differences:
+I've refactored this package to help myself with writing tests and my PR on the original package has not been reviewed
+in months.
+
+Having given it a new name I'm restarting the versioning from v1. The 
+
+A massive thank you to Daniel Nichter for having done most of the work!
+
+## Usage
 
 ```go
 package main_test
 
 import (
 	"testing"
-	"github.com/go-test/deep"
+	"github.com/acorello/deef"
 )
 
 type T struct {
@@ -37,12 +48,13 @@ func TestDeepEqual(t *testing.T) {
 		Numbers: []float64{1.13459, 2.29843, 3.010100010},
 	}
 
-	if diff := deep.Equal(t1, t2); diff != nil {
+	c := deef.NewWithDefaults()
+
+	if diff := c.Compare(t1, t2); !diff.IsEmpty() {
 		t.Error(diff)
 	}
 }
 ```
-
 
 ```
 $ go test
