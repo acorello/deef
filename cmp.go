@@ -9,8 +9,8 @@ import (
 )
 
 var (
-	// ErrMaxRecursion is logged when MaxDepth is reached.
-	ErrMaxRecursion = errors.New("recursed to MaxDepth")
+	// ErrMaxRecursion is logged when WithMaxDepth is reached.
+	ErrMaxRecursion = errors.New("recursed to WithMaxDepth")
 
 	// ErrTypeMismatch is logged when Equal passed two different types of values.
 	ErrTypeMismatch = errors.New("variables are different reflect.Type")
@@ -347,7 +347,7 @@ func (c *cmp) delta_(a, b reflect.Value, level uint) {
 	/////////////////////////////////////////////////////////////////////
 
 	case reflect.Float32, reflect.Float64:
-		// Round floats to FloatPrecision decimal places to compare with
+		// Round floats to WithFloatPrecision decimal places to compare with
 		// user-defined precision. As is commonly know, floats have "imprecision"
 		// such that 0.1 becomes 0.100000001490116119384765625. This cannot
 		// be avoided; it can only be handled. Issue 30 suggested that floats
