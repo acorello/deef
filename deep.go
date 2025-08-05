@@ -1,4 +1,4 @@
-// Package deep provides function deep.Equal which is like reflect.DeepEqual but
+// Package deep provides Differ.Compare which is like reflect.DeepEqual but
 // returns a list of differences. This is helpful when comparing complex types
 // like structures and maps.
 package deep
@@ -44,9 +44,9 @@ func New(opts ...Opt) (d Differ, err error) {
 	return d, err
 }
 
-type Delta []string
+type Diffs []string
 
-func (d Delta) Equal(other Delta) bool {
+func (d Diffs) Equal(other Diffs) bool {
 	if len(d) != len(other) {
 		return false
 	}
@@ -58,21 +58,21 @@ func (d Delta) Equal(other Delta) bool {
 	return true
 }
 
-func (d Delta) IsEmpty() bool {
+func (d Diffs) IsEmpty() bool {
 	return len(d) == 0
 }
 
-// Equal compares variables a and b, recursing into their structure up to
+// Compare compares variables a and b, recursing into their structure up to
 // WithMaxDepth levels deep (if greater than zero), and returns a list of differences,
 // or nil if there are none. Some differences may not be found if an error is
 // also returned.
 //
-// If a type has an Equal method, like time.Equal, it is called to check for
+// If a type has an Compare method, like time.Compare, it is called to check for
 // equality.
 //
 // When comparing a struct, if a field has the tag `deep:"-"` then it will be
 // ignored.
-func (d Differ) Equal(a, b any) Delta {
+func (d Differ) Compare(a, b any) Diffs {
 	c := cmp{
 		Differ:      d,
 		diff:        []string{},
@@ -175,10 +175,10 @@ func WithNilPointersAreZero(b bool) Opt {
 	}
 }
 
-// WithIgnoreSliceOrder causes Equal to ignore slice order so that
+// WithIgnoreSliceOrder causes Compare to ignore slice order so that
 // []int{1, 2} and []int{2, 1} are equal. Only slices of primitive scalars
 // like numbers and strings are supported. Slices of complex types,
-// like []T where T is a struct, are undefined because Equal does not
+// like []T where T is a struct, are undefined because Compare does not
 // recurse into the slice value when this flag is enabled.
 func WithIgnoreSliceOrder(b bool) Opt {
 	return func(differ *Differ) error {

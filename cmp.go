@@ -12,7 +12,7 @@ var (
 	// ErrMaxRecursion is logged when WithMaxDepth is reached.
 	ErrMaxRecursion = errors.New("recursed to WithMaxDepth")
 
-	// ErrTypeMismatch is logged when Equal passed two different types of values.
+	// ErrTypeMismatch is logged when Compare passed two different types of values.
 	ErrTypeMismatch = errors.New("variables are different reflect.Type")
 
 	// ErrNotHandled is logged when a primitive Go kind is not handled.
@@ -28,7 +28,7 @@ type cmp struct {
 	floatFormat string
 }
 
-func (c *cmp) delta(a any, b any) Delta {
+func (c *cmp) delta(a any, b any) Diffs {
 	if a == nil && b == nil {
 		return nil
 	} else if a == nil {
