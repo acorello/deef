@@ -1,4 +1,4 @@
-package deep
+package deef
 
 import (
 	"errors"

@@ -1,7 +1,7 @@
-// Package deep provides Comparator.Compare which is like reflect.DeepEqual but
+// Package deef provides Comparator.Compare which is like reflect.DeepEqual but
 // returns a list of differences. This is helpful when comparing complex types
 // like structures and maps.
-package deep
+package deef
 
 import (
 	"fmt"
@@ -21,27 +21,27 @@ type Comparator struct {
 	nilSlicesAreEmpty       bool
 }
 
-func NewWithDefaults() (d Comparator) {
-	d, err := New()
+func NewWithDefaults() (c Comparator) {
+	c, err := New()
 	if err != nil {
 		panic(fmt.Errorf("factory method with default params failed: %w", err))
 	}
-	return d
+	return c
 }
 
-func New(opts ...Opt) (d Comparator, err error) {
-	d = Comparator{
+func New(opts ...Opt) (c Comparator, err error) {
+	c = Comparator{
 		// options where zero-value equals default value are omitted
 		floatPrecision: 10,
 		maxDiff:        10,
 	}
 	for opt := range slices.Values(opts) {
-		err = opt(&d)
+		err = opt(&c)
 		if err != nil {
 			break
 		}
 	}
-	return d, err
+	return c, err
 }
 
 type Diffs []string
@@ -72,18 +72,18 @@ func (d Diffs) IsEmpty() bool {
 //
 // When comparing a struct, if a field has the tag `deep:"-"` then it will be
 // ignored.
-func (d Comparator) Compare(a, b any) Diffs {
-	c := comparator{
-		Comparator:  d,
+func (c Comparator) Compare(a, b any) Diffs {
+	comp := comparator{
+		Comparator:  c,
 		diff:        []string{},
 		buff:        []string{},
-		floatFormat: fmt.Sprintf("%%.%df", d.floatPrecision),
+		floatFormat: fmt.Sprintf("%%.%df", c.floatPrecision),
 	}
-	return c.delta(a, b)
+	return comp.delta(a, b)
 }
 
-func (d Comparator) But(opts ...Opt) (r Comparator, err error) {
-	r = d
+func (c Comparator) But(opts ...Opt) (r Comparator, err error) {
+	r = c // make copy
 	for opt := range slices.Values(opts) {
 		err = opt(&r)
 		if err != nil {
